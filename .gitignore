@@ -9,6 +9,14 @@
 # testing
 /coverage
 
+# redux
+/store
+
+.env
+.env.development
+.env.production
+.env.test
+
 # next.js
 /.next/
 /out/

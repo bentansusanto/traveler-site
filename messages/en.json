@@ -1,0 +1,18 @@
+{
+  "HomePage": {
+    "title": "Welcome to our Travel App!",
+    "description": "Discover your next adventure."
+  },
+  "WhyChooseUs": {
+    "sectionTag": "Why Choose Us",
+    "title": "Your Dream Vacation, Seamlessly Taken Care Of.",
+    "description": "We offer tailor-made journeys with professional service and unforgettable experiences at every destination.",
+    "features": {
+      "allInOne": "All-in-One Travel Services",
+      "professional": "Professional & Experienced Team",
+      "multiTrip": "Multi-Trip Booking with Auto Itinerary",
+      "flexible": "Wide & Flexible Destination Choices"
+    },
+    "bookNow": "Book Now"
+  }
+}

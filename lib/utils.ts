@@ -16,15 +16,26 @@ export function generateAvatarFallback(string: string) {
 export function generateMeta({
   title,
   description,
+  keywords
 }: {
   title: string;
   description: string;
+  keywords?: string[];
 }): Metadata {
   return {
-    title: `${title} - Shadcn UI Kit Free Dashboard Template`,
+    title: title,
     description: description,
+    keywords: keywords?.join(", "),
     openGraph: {
-      images: [`/seo.jpg`]
+      title: title,
+      description: description,
+      images: [`/images/bg-authentication.png`] // Using an existing valid image for OG
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: title,
+      description: description,
+      images: [`/images/bg-authentication.png`]
     }
   };
 }

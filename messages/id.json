@@ -1,0 +1,18 @@
+{
+  "HomePage": {
+    "title": "Selamat datang di Aplikasi Wisata kami!",
+    "description": "Temukan petualangan Anda berikutnya."
+  },
+  "WhyChooseUs": {
+    "sectionTag": "Mengapa Memilih Kami",
+    "title": "Liburan Impian Anda, Kami Urus dengan Sempurna.",
+    "description": "Kami menawarkan perjalanan yang disesuaikan dengan layanan profesional dan pengalaman tak terlupakan di setiap destinasi.",
+    "features": {
+      "allInOne": "Layanan Perjalanan Lengkap",
+      "professional": "Tim Profesional & Berpengalaman",
+      "multiTrip": "Pemesanan Multi-Trip dengan Itinerari Otomatis",
+      "flexible": "Pilihan Destinasi Luas & Fleksibel"
+    },
+    "bookNow": "Pesan Sekarang"
+  }
+}
