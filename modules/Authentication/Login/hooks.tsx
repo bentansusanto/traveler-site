@@ -4,11 +4,14 @@ import { useFormik } from "formik";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { setLoginState } from "@/store/slices/authSlice";
 import { initialLoginValues, loginSchema } from "./schema";
 
 export const HookLogin = () => {
   const [login, { isLoading }] = useLoginMutation();
   const router = useRouter();
+  const dispatch = useDispatch();
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -60,6 +63,7 @@ export const HookLogin = () => {
             path: "/"
           });
 
+          dispatch(setLoginState({ userName: response.data?.name || "User", token: accessToken }));
           console.log("Token saved successfully:", accessToken.substring(0, 20) + "...");
 
           setStatusMessage({

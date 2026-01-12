@@ -47,7 +47,7 @@ export const NavMenu = [
 ];
 
 export const MobileNav = [
-  { label: "Your Orders", href: "/my-bookings" },
+  { label: "Your Booking", href: "/my-bookings" },
   { label: "Mata Uang", href: "/currency", value: "IDR" },
   { label: "Bahasa", href: "/language", value: "Bahasa Indonesia" }
 ];

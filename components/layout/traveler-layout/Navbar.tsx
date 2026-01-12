@@ -126,7 +126,7 @@ export const Navbar = () => {
             />
           </Link>
           <div className="flex items-center gap-3">
-            <button
+            {/* <button
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 isScrolled ? "bg-gray-100 text-gray-600" : "bg-white/20 text-white backdrop-blur-md"
@@ -141,7 +141,7 @@ export const Navbar = () => {
                 )}
               </div>
               Promo
-            </button>
+            </button> */}
             <Drawer
               open={isDrawerOpen}
               onOpenChange={(open) => {
@@ -309,7 +309,7 @@ export const Navbar = () => {
                           );
                         }
 
-                        const isOrders = item.label === "Your Orders";
+                        const isOrders = item.label === "Your Booking";
 
                         return (
                           <Link
@@ -345,18 +345,20 @@ export const Navbar = () => {
                         );
                       })}
                     </div>
-                    <div className="flex gap-3 p-4">
-                      <Button
-                        size="lg"
-                        className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 active:bg-blue-200">
-                        Login
-                      </Button>
-                      <Button
-                        size="lg"
-                        className="flex-1 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800">
-                        Register
-                      </Button>
-                    </div>
+                    {!isLoggedIn && (
+                      <div className="flex gap-3 p-4">
+                        <Button
+                          size="lg"
+                          className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 active:bg-blue-200">
+                          Login
+                        </Button>
+                        <Button
+                          size="lg"
+                          className="flex-1 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800">
+                          Register
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </DrawerContent>
@@ -387,8 +389,10 @@ export const Navbar = () => {
               ))}
               {moreItems.length > 0 && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1 text-sm font-medium outline-hidden transition-colors hover:text-blue-600">
-                    Lainnya <ChevronDown className="size-4" />
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex cursor-pointer items-center gap-1 text-sm font-medium transition-colors outline-none hover:text-blue-600">
+                      Lainnya <ChevronDown className="size-4" />
+                    </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[200px]">
                     {moreItems.map((item, index) => (
@@ -410,8 +414,10 @@ export const Navbar = () => {
               // Not logged in - Show Login & Sign Up buttons
               <>
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1 text-sm font-medium outline-hidden transition-colors hover:text-blue-600">
-                    {locale === "en" ? "EN" : "ID"} <ChevronDown className="size-4" />
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex cursor-pointer items-center gap-1 text-sm font-medium transition-colors outline-none hover:text-blue-600">
+                      {locale === "en" ? "EN" : "ID"} <ChevronDown className="size-4" />
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[150px]">
                     <DropdownMenuItem
@@ -437,8 +443,10 @@ export const Navbar = () => {
               // Logged in - Show language, notifications, and avatar
               <>
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1 text-sm font-medium outline-hidden transition-colors hover:text-blue-600">
-                    {locale === "en" ? "EN" : "ID"} <ChevronDown className="size-4" />
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex cursor-pointer items-center gap-1 text-sm font-medium transition-colors outline-none hover:text-blue-600">
+                      {locale === "en" ? "EN" : "ID"} <ChevronDown className="size-4" />
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[150px]">
                     <DropdownMenuItem
@@ -456,7 +464,7 @@ export const Navbar = () => {
 
                 {/* Currency Selector */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1 text-sm font-medium outline-hidden transition-colors hover:text-blue-600">
+                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1 text-sm font-medium transition-colors outline-none hover:text-blue-600">
                     {currentCurrency.code} <ChevronDown className="size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[150px]">
@@ -476,7 +484,7 @@ export const Navbar = () => {
 
                 {/* My Bookings - Ticket Icon */}
                 <Link
-                  href="/my-bookings"
+                  href="/profile"
                   className="relative"
                   onClick={() => dispatch(setHasNewBooking(false))}>
                   <button className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100">
@@ -494,16 +502,18 @@ export const Navbar = () => {
 
                 {/* User Avatar Dropdown */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 outline-hidden">
-                    <div className="relative h-8 w-8 overflow-hidden rounded-full">
-                      <Image
-                        src={`/images/avatars/${Math.abs(displayUserName.charCodeAt(0) % 12) + 1}.png`}
-                        alt={displayUserName}
-                        fill
-                        className="object-cover"
-                      />
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex cursor-pointer items-center gap-2 outline-none">
+                      <div className="relative h-8 w-8 overflow-hidden rounded-full">
+                        <Image
+                          src={`/images/avatars/${Math.abs(displayUserName.charCodeAt(0) % 12) + 1}.png`}
+                          alt={displayUserName}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <ChevronDown className="size-4" />
                     </div>
-                    <ChevronDown className="size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[200px]">
                     <DropdownMenuItem asChild>

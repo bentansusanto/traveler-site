@@ -17,7 +17,7 @@ export const MobileBottomNavbar = () => {
       {BottomNavMenu.map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;
-        const isOrders = item.href === "/my-bookings" || item.title === "Your Orders";
+        const isOrders = item.href === "/my-bookings" || item.title === "Your Booking";
 
         return (
           <Link

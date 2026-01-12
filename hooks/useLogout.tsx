@@ -1,12 +1,15 @@
 "use client";
 
 import { useLogoutMutation } from "@/store/services/auth.service";
+import { setLogoutState } from "@/store/slices/authSlice";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 
 export const useLogout = () => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [logout, { isLoading }] = useLogoutMutation();
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
@@ -23,6 +26,9 @@ export const useLogout = () => {
       // Clear token from cookies
       Cookies.remove("travel_token");
 
+      // Reset Redux state
+      dispatch(setLogoutState());
+
       // Show success message
       setStatusMessage({
         type: "success",
@@ -36,6 +42,7 @@ export const useLogout = () => {
     } catch (error: any) {
       // Even if API fails, still clear token and redirect
       Cookies.remove("travel_token");
+      dispatch(setLogoutState());
 
       setStatusMessage({
         type: "error",

@@ -14,17 +14,27 @@ export default function middleware(request: NextRequest) {
   // Define auth pages that logged-in users should not access
   const authPages = ["/login", "/register"];
 
+  // Define protected pages that guest users should not access
+  const protectedPages = ["/my-bookings", "/profile", "/payments", "/orders"];
+
+  // Get current locale
+  const localeMatch = pathname.match(/^\/(en|id)/);
+  const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
+
   // Check if current path is an auth page (accounting for locale prefix)
   const isAuthPage = authPages.some((page) => pathname.includes(page));
 
+  // Check if current path is a protected page
+  const isProtectedPage = protectedPages.some((page) => pathname.includes(page));
+
   // If user is logged in and trying to access auth pages, redirect to home
   if (token && isAuthPage) {
-    // Extract locale from pathname if exists
-    const localeMatch = pathname.match(/^\/(en|id)/);
-    const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
-
-    // Redirect to home page with locale
     return NextResponse.redirect(new URL(`/${locale}`, request.url));
+  }
+
+  // If user is NOT logged in and trying to access protected pages, redirect to login
+  if (!token && isProtectedPage) {
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   }
 
   // Continue with i18n middleware
