@@ -1,13 +1,16 @@
 "use client";
 
 import Icon from "@/components/icon";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useGetAllTourQuery } from "@/store/services/book-tour.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
+import { useCreatePaymentMutation } from "@/store/services/payment.service";
 import { useFindAllTouristQuery } from "@/store/services/tourist.service";
 import { useLocale } from "next-intl";
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 
 interface PaymentPageProps {
   orderId: string;
@@ -72,6 +75,64 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
     return subtotal * count;
   }, [booking, tourists]);
 
+  // Payment state
+  const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentMutation();
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Get currency from Redux store (from navbar)
+  const currentCurrency = useSelector(
+    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+  );
+  const selectedCurrency = currentCurrency.code as "IDR" | "USD";
+
+  // Use dynamic exchange rate from Redux store
+  const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
+
+  // Calculate price in selected currency
+  const displayPrice = useMemo(() => {
+    if (selectedCurrency === "USD") {
+      return totalPrice * idrToUsdRate; // IDR to USD conversion
+    }
+    return totalPrice;
+  }, [totalPrice, selectedCurrency, idrToUsdRate]);
+
+  const handlePayment = async () => {
+    if (!booking || !orderId) return;
+
+    setPaymentError(null);
+
+    try {
+
+      const result = await createPayment({
+        book_tour_id: orderId,
+        payment_method: "paypal",
+        currency: "IDR", // Always IDR because database stores amount in IDR
+        exchange_rate: idrToUsdRate // Send dynamic exchange rate to backend
+      }).unwrap();
+
+
+      // Redirect to PayPal in new tab
+      if (result.data?.redirect_url) {
+        window.open(result.data.redirect_url, "_blank");
+      } else {
+        setPaymentError("Gagal mendapatkan URL pembayaran. Silakan coba lagi.");
+      }
+    } catch (error: any) {
+      console.error("Payment creation error:", error);
+
+      // Handle specific error messages
+      if (error?.data?.message) {
+        setPaymentError(error.data.message);
+      } else if (error?.status === 401) {
+        setPaymentError("Sesi Anda telah berakhir. Silakan login kembali.");
+      } else if (error?.status === 404) {
+        setPaymentError("Pesanan tidak ditemukan. Silakan coba lagi.");
+      } else {
+        setPaymentError("Terjadi kesalahan saat membuat pembayaran. Silakan coba lagi.");
+      }
+    }
+  };
+
   if (isLoadingBooking || isLoadingTourists) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -133,6 +194,14 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
               </div>
             </div>
 
+            {/* Error Alert */}
+            {paymentError && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <Icon name="AlertCircle" className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{paymentError}</AlertDescription>
+              </Alert>
+            )}
+
             {/* Price Detail (Mobile only display adaptation) */}
             <div className="block rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:hidden">
               <h3 className="mb-4 text-lg font-bold text-gray-900">Rincian Harga</h3>
@@ -140,26 +209,36 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Person ({tourists.length} orang)</span>
                   <span className="font-medium text-gray-900">
-                    {new Intl.NumberFormat("id-ID", {
+                    {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0
-                    }).format(totalPrice)}
+                      currency: selectedCurrency,
+                      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+                    }).format(displayPrice)}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-gray-100 pt-2 font-bold text-gray-900">
                   <span>Total Pembayaran</span>
                   <span className="text-lg text-orange-500">
-                    {new Intl.NumberFormat("id-ID", {
+                    {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0
-                    }).format(totalPrice)}
+                      currency: selectedCurrency,
+                      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+                    }).format(displayPrice)}
                   </span>
                 </div>
               </div>
-              <Button className="mt-6 h-12 w-full rounded-xl bg-orange-500 font-bold text-white hover:bg-orange-600">
-                Bayar Sekarang
+              <Button
+                onClick={handlePayment}
+                disabled={isCreatingPayment || !booking}
+                className="mt-6 h-12 w-full rounded-xl bg-orange-500 font-bold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50">
+                {isCreatingPayment ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Memproses...
+                  </>
+                ) : (
+                  "Bayar Sekarang"
+                )}
               </Button>
             </div>
           </div>
@@ -231,11 +310,11 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Person ({tourists.length} orang)</span>
                   <span className="font-medium text-gray-900">
-                    {new Intl.NumberFormat("id-ID", {
+                    {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0
-                    }).format(totalPrice)}
+                      currency: selectedCurrency,
+                      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+                    }).format(displayPrice)}
                   </span>
                 </div>
                 {/* Tax Placeholder if needed, but per previous instruction they were removed from summary.
@@ -247,16 +326,26 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                     <span className="text-base">Harga Total</span>
                   </div>
                   <span className="text-xl leading-none text-orange-500">
-                    {new Intl.NumberFormat("id-ID", {
+                    {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0
-                    }).format(totalPrice)}
+                      currency: selectedCurrency,
+                      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+                    }).format(displayPrice)}
                   </span>
                 </div>
               </div>
-              <Button className="mt-8 h-14 w-full rounded-xl bg-blue-500 text-[16px] font-bold text-white shadow-lg shadow-blue-100 transition-colors hover:bg-blue-600">
-                Bayar Sekarang
+              <Button
+                onClick={handlePayment}
+                disabled={isCreatingPayment || !booking}
+                className="mt-8 h-14 w-full rounded-xl bg-blue-500 text-[16px] font-bold text-white shadow-lg shadow-blue-100 transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
+                {isCreatingPayment ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Memproses...
+                  </>
+                ) : (
+                  "Bayar Sekarang"
+                )}
               </Button>
             </div>
           </div>

@@ -64,7 +64,6 @@ export const HookLogin = () => {
           });
 
           dispatch(setLoginState({ userName: response.data?.name || "User", token: accessToken }));
-          console.log("Token saved successfully:", accessToken.substring(0, 20) + "...");
 
           setStatusMessage({
             type: "success",

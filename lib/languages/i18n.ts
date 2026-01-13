@@ -10,7 +10,6 @@ export default getRequestConfig(async ({ locale }) => {
 
   const finalLocale = routing.locales.includes(locale as any) ? locale : routing.defaultLocale;
 
-  console.log(`[i18n] Loading messages for: "${finalLocale}"`);
 
   return {
     locale: finalLocale as string,

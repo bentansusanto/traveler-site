@@ -1,4 +1,6 @@
 "use client";
+import Icon from "@/components/icon";
+import { MobileBottomNavbar } from "@/components/layout/traveler-layout/MobileBottomNavbar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MobileBottomNavbar } from "@/components/layout/traveler-layout/MobileBottomNavbar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +24,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { orderTourSchema } from "@/modules/Orders/OrderTour/schema";
+import { orderTourSchema } from "@/modules/Tourist/OrderTour/schema";
 import { useGetAllTourQuery } from "@/store/services/book-tour.service";
 import {
   useCreateTouristMutation,
@@ -37,8 +38,7 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import {BookTourDetail} from "../Booking/BookingTour/BookTourDetail";
-import Icon from "@/components/icon";
+import { BookTourDetail } from "../Booking/BookingTour/BookTourDetail";
 
 // Reusing the TravelerEditModal from Profile/index.tsx
 //Ideally this should be refactored into a shared component, but for now copying to ensure functionality matches
@@ -514,7 +514,8 @@ export const MyBookingPageMobile = () => {
               const statusConfig = {
                 draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
                 pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-                confirmed: { label: "Confirmed", color: "bg-green-100 text-green-700" },
+                ongoing: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
+                completed: { label: "Completed", color: "bg-green-100 text-green-700" },
                 cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" }
               };
               return statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
@@ -546,11 +547,6 @@ export const MyBookingPageMobile = () => {
                       {translation?.name || "Destination"}
                     </h3>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={cn("ml-2 shrink-0 font-medium", statusBadge.color)}>
-                    {statusBadge.label}
-                  </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -558,6 +554,11 @@ export const MyBookingPageMobile = () => {
                     onClick={() => handleOpenDetailModal(booking)}>
                     <Icon name="Eye" className="h-4 w-4" />
                   </Button>
+                  <Badge
+                    variant="secondary"
+                    className={cn("ml-2 shrink-0 font-medium", statusBadge.color)}>
+                    {statusBadge.label}
+                  </Badge>
                 </div>
 
                 <div className="mb-4 space-y-1.5 text-sm text-gray-500">
@@ -591,37 +592,45 @@ export const MyBookingPageMobile = () => {
                   </div>
 
                   <div className="grid gap-2">
-                    {touristCount === 0 || booking.status === "cancelled" ? (
-                      <Button
-                        variant="destructive"
-                        className="w-full bg-red-50 text-red-600 hover:bg-red-100"
-                        onClick={() => handleOpenEditModal(booking)}>
-                        Cancel Tour
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => handleOpenEditModal(booking)}>
-                          Cancel Tour
-                        </Button>
-                        <Link
-                          href={`/${locale}/orders/order-tour?id=${booking.id}`}
-                          className="flex-1">
-                          <Button className="w-full bg-blue-600 hover:bg-blue-700">Checkout</Button>
-                        </Link>
-                      </div>
-                    )}
-                    {/* Add Edit Traveler Button */}
-                    {touristCount > 0 && booking.status !== "cancelled" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 w-full"
-                        onClick={() => handleOpenEditModal(booking)}>
-                        Edit Traveler Data
-                      </Button>
+                    {!["ongoing", "completed", "pending"].includes(
+                      booking.status.toLowerCase()
+                    ) && (
+                      <>
+                        {touristCount === 0 || booking.status === "cancelled" ? (
+                          <Button
+                            variant="destructive"
+                            className="w-full bg-red-50 text-red-600 hover:bg-red-100"
+                            onClick={() => handleOpenEditModal(booking)}>
+                            Cancel Tour
+                          </Button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => handleOpenEditModal(booking)}>
+                              Cancel Tour
+                            </Button>
+                            <Link
+                              href={`/${locale}/orders/order-tour?id=${booking.id}`}
+                              className="flex-1">
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                                Checkout
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                        {/* Edit Traveler Button */}
+                        {touristCount > 0 && booking.status !== "cancelled" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 w-full"
+                            onClick={() => handleOpenEditModal(booking)}>
+                            Edit Traveler Data
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -641,11 +650,7 @@ export const MyBookingPageMobile = () => {
         }}
       />
 
-       <BookTourDetail
-            open={isDetailModalOpen}
-            setOpen={setIsDetailModalOpen}
-            data={dataDetail}
-        />
+      <BookTourDetail open={isDetailModalOpen} setOpen={setIsDetailModalOpen} data={dataDetail} />
 
       {/* Bottom Actions - Sort/Filter (Visual Only for now as per screenshot layout) */}
       {/* Bottom Actions - Sort/Filter (Visual Only for now as per screenshot layout) */}

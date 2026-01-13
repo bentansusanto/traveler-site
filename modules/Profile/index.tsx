@@ -25,11 +25,15 @@ import {
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLogout } from "@/hooks/useLogout";
+import { cn } from "@/lib/utils";
 import { useGetUserQuery } from "@/store/services/auth.service";
+import { useFindTourByIdQuery, useGetAllTourQuery } from "@/store/services/book-tour.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
+import { useFindAllPaymentQuery } from "@/store/services/payment.service";
 import {
   useCreateTouristMutation,
   useDeleteTouristMutation,
+  useFindAllTouristQuery,
   useUpdateManyTouristMutation
 } from "@/store/services/tourist.service";
 import { useFormik } from "formik";
@@ -46,11 +50,13 @@ import {
   User,
   Wallet
 } from "lucide-react";
+import { useLocale } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import { toast } from "sonner";
-import { orderTourSchema } from "../Orders/OrderTour/schema";
+import { orderTourSchema } from "../Tourist/OrderTour/schema";
 
 export const ProfilePage = () => {
   const isMobile = useIsMobile();
@@ -403,7 +409,7 @@ const TourItemDetail = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { data: destinationData, isLoading } = useFindDestinationIdQuery(item.destination_id, {
-    skip: !item.destination_id
+    skip: !!item?.destination || !item.destination_id
   });
 
   if (isLoading) {
@@ -417,7 +423,7 @@ const TourItemDetail = ({
     );
   }
 
-  const destination = destinationData?.data;
+  const destination = item?.destination || destinationData?.data;
   const translation =
     destination?.translations?.find((tr: any) => tr.language_code === locale) ||
     destination?.translations?.[0];
@@ -429,60 +435,75 @@ const TourItemDetail = ({
 
       {/* Itinerary item */}
       <div className="pb-6">
-        {/* Header - Always visible */}
+        {/* Header - Interactive for Accordion */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="-ml-3 w-full rounded-lg p-3 text-left transition-colors hover:bg-gray-50">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               {/* Day number */}
-              <div className="mb-1 text-xs font-semibold text-blue-600">
+              <div className="mb-1 text-[11px] font-bold tracking-wider text-blue-500 uppercase">
                 Day {dayRange || dayNumber}
               </div>
 
               {/* Destination name */}
-              <h4 className="mb-1 font-semibold text-gray-900">
+              <h4 className="mb-1 text-lg font-bold text-gray-900">
                 {translation?.name || "Destination"}
               </h4>
 
-              {/* Location */}
-              {destination?.location && (
-                <p className="mb-1 text-sm text-gray-500">
-                  <Icon name="MapPin" className="mr-1 inline h-3 w-3" />
-                  {destination.location}
-                </p>
-              )}
+              {/* Icon Row for Details - Always visible summary */}
+              {/* {translation?.detail_tour && translation.detail_tour.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {translation.detail_tour.slice(0, 5).map((detail: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1 rounded-full border border-blue-100/50 bg-blue-50/50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                      <Icon name={detail} className="h-2.5 w-2.5" />
+                      <span className="capitalize">{detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )} */}
 
-              {/* Visit Date */}
-              <p className="text-sm text-gray-600">
-                <Icon name="Calendar" className="mr-1 inline h-4 w-4" />
-                {new Date(item.visit_date).toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric"
-                })}
-              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                {destination?.location && (
+                  <p className="flex items-center text-sm text-gray-500">
+                    <Icon name="MapPin" className="mr-1.5 h-4 w-4 text-gray-400" />
+                    {destination.location}
+                  </p>
+                )}
+                <p className="flex items-center text-sm text-gray-400">
+                  <Icon name="Calendar" className="mr-1.5 h-4 w-4" />
+                  {new Date(item.visit_date).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  })}
+                </p>
+              </div>
             </div>
 
             {/* Chevron icon */}
             <Icon
               name="ChevronDown"
-              className={`h-5 w-5 flex-shrink-0 text-gray-400 transition-transform ${
+              className={`mt-1 h-5 w-5 flex-shrink-0 text-gray-400 transition-transform ${
                 isExpanded ? "rotate-180" : ""
               }`}
             />
           </div>
         </button>
 
-        {/* Expandable Detail Tour */}
+        {/* Expandable Detail Tour Content */}
         {isExpanded && translation?.detail_tour && translation.detail_tour.length > 0 && (
-          <div className="mt-3 rounded-lg bg-blue-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-gray-700">Itinerary Detail:</p>
-            <ul className="space-y-2">
+          <div className="mt-3 rounded-xl border border-blue-100/50 bg-blue-50/50 p-5">
+            <p className="mb-4 text-sm font-bold text-blue-800">Detail Rencana Perjalanan:</p>
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {translation.detail_tour.map((detail: string, idx: number) => (
-                <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span className="capitalize">{detail}</span>
+                <li key={idx} className="flex items-start gap-3 text-sm text-gray-700">
+                  <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                    <Icon name={detail} className="h-3 w-3" />
+                  </div>
+                  <span className="leading-relaxed capitalize">{detail}</span>
                 </li>
               ))}
             </ul>
@@ -857,18 +878,23 @@ const TravelerEditModal = ({
 
 // My Booking Content Component
 const MyBookingContent = ({ userName }: { userName: string }) => {
-  const { useGetAllTourQuery } = require("@/store/services/book-tour.service");
-  const { useFindAllTouristQuery } = require("@/store/services/tourist.service");
-  const { useLocale } = require("next-intl");
-  const { cn } = require("@/lib/utils");
-
   const locale = useLocale();
+
+  // Get currency from Redux store
+  const currentCurrency = useSelector(
+    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+  );
+  const selectedCurrency = currentCurrency.code as "IDR" | "USD";
+  const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
+
   const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined);
   const {
     data: touristsData,
     isLoading: isLoadingTourists,
     refetch: refetchTourists
   } = useFindAllTouristQuery();
+
+  // Debug logging
 
   const isLoading = isLoadingBookings || isLoadingTourists;
 
@@ -933,12 +959,15 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
           // Format subtotal as currency
           const formatSubtotal = (amount: string | number) => {
             const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-            return new Intl.NumberFormat("id-ID", {
+
+            // Convert to selected currency
+            const displayAmount = selectedCurrency === "USD" ? numAmount * idrToUsdRate : numAmount;
+            return new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
               style: "currency",
-              currency: "IDR",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            }).format(numAmount);
+              currency: selectedCurrency,
+              minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0,
+              maximumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+            }).format(displayAmount);
           };
 
           // Get status label and color
@@ -946,7 +975,8 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
             const statusConfig = {
               draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
               pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-              confirmed: { label: "Confirmed", color: "bg-green-100 text-green-700" },
+              ongoing: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
+              completed: { label: "Completed", color: "bg-green-100 text-green-700" },
               cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" }
             };
             return statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
@@ -961,6 +991,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
             : Array.isArray(data)
               ? data
               : [];
+
           const bookingTourists = touristList.filter((t: any) => t.book_tour_id === booking.id);
 
           const touristCount = bookingTourists.length;
@@ -1026,11 +1057,13 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                   <h4 className="text-sm font-bold text-gray-900">
                     Traveler {touristCount > 0 ? `(${touristCount})` : ""}
                   </h4>
-                  <button
-                    onClick={() => handleOpenEditModal(booking)}
-                    className="text-gray-400 transition-colors hover:text-blue-600">
-                    <Icon name="Pencil" className="h-3.5 w-3.5" />
-                  </button>
+                  {booking.status.toLowerCase() === "draft" && (
+                    <button
+                      onClick={() => handleOpenEditModal(booking)}
+                      className="text-gray-400 transition-colors hover:text-blue-600">
+                      <Icon name="Pencil" className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
                 {touristCount > 0 ? (
                   <div className="grid grid-cols-1 gap-1.5">
@@ -1053,21 +1086,23 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
-                {touristCount > 0 && (
-                  <Link href={`/${locale}/payments?order_id=${booking.id}`} className="flex-1">
-                    <Button size="sm" className="w-full bg-blue-500 text-white hover:bg-blue-600">
-                      Checkout
-                    </Button>
-                  </Link>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600">
-                  Cancel Tour
-                </Button>
-              </div>
+              {!["ongoing", "completed"].includes(booking.status.toLowerCase()) && (
+                <div className="flex gap-2">
+                  {touristCount > 0 && (
+                    <Link href={`/${locale}/payments?order_id=${booking.id}`} className="flex-1">
+                      <Button size="sm" className="w-full bg-blue-500 text-white hover:bg-blue-600">
+                        Checkout
+                      </Button>
+                    </Link>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600">
+                    Cancel Tour
+                  </Button>
+                </div>
+              )}
             </div>
           );
         })}
@@ -1085,57 +1120,77 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
 
       {/* Booking Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
+          <DialogHeader className="shrink-0 border-b p-6">
             <DialogTitle>Detail Booking</DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto pr-2">
-            {selectedBooking && (
-              <div className="space-y-4">
-                {/* Booking Info */}
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="mb-2 font-semibold text-gray-900">Informasi Booking</h3>
-                  <div className="space-y-2 text-sm">
+
+          {selectedBooking && (
+            <>
+              <div className="shrink-0 border-b bg-gray-50/30 p-6">
+                {/* Booking Info Card */}
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Booking</h3>
+                  <div className="grid gap-3 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Booking ID:</span>
-                      <span className="font-medium">{selectedBooking.id}</span>
+                      <span className="text-gray-500">Booking ID:</span>
+                      <span className="font-mono font-medium text-blue-600">
+                        {selectedBooking.id}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span className="font-medium capitalize">{selectedBooking.status}</span>
+                      <span className="text-gray-500">Status:</span>
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          selectedBooking.status?.toLowerCase() === "completed" ||
+                            selectedBooking.status?.toLowerCase() === "ongoing"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-blue-100 text-blue-700"
+                        )}>
+                        {selectedBooking.status}
+                      </span>
                     </div>
                     {selectedBooking.country && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Country:</span>
+                        <span className="text-gray-500">Negara:</span>
                         <span className="font-medium">{selectedBooking.country.name}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-bold">
+                    <div className="flex justify-between border-t border-gray-100 pt-2">
+                      <span className="font-semibold text-gray-900">Total Subtotal:</span>
+                      <span className="font-bold text-blue-600">
                         {new Intl.NumberFormat("id-ID", {
                           style: "currency",
                           currency: "IDR",
-                          minimumFractionDigits: 0
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
                         }).format(parseFloat(selectedBooking.subtotal))}
                       </span>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Tour Itinerary */}
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="mb-4 font-semibold text-gray-900">
-                    Tour Itinerary ({selectedBooking.book_tour_items?.length || 0} destinations)
+              <div className="flex-1 space-y-6 overflow-y-auto p-6">
+                {/* Tour Itinerary Detail */}
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="mb-4 text-sm font-bold text-gray-900">
+                    Detail Itinerary ({selectedBooking.book_tour_items?.length || 0} Destinasi)
                   </h3>
                   <div className="space-y-0">
                     {(() => {
                       // Sort items by visit_date chronologically
                       const items = selectedBooking.book_tour_items || [];
-                      const sortedItems = [...items].sort(
-                        (a: any, b: any) =>
-                          new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime()
-                      );
+                      const sortedItems = [...items].sort((a: any, b: any) => {
+                        const dateA = new Date(a.visit_date).getTime();
+                        const dateB = new Date(b.visit_date).getTime();
+                        if (dateA !== dateB) return dateA - dateB;
+                        // Stable secondary sort using created_at
+                        const seqA = new Date(a.created_at || 0).getTime();
+                        const seqB = new Date(b.created_at || 0).getTime();
+                        return seqA - seqB;
+                      });
 
                       return sortedItems.map((item: any, index: number) => (
                         <TourItemDetail
@@ -1151,10 +1206,283 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+};
+
+// Order Detail Modal Component for Desktop
+const OrderDetailModal = ({
+  open,
+  onOpenChange,
+  payment
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  payment: any;
+}) => {
+  const locale = useLocale();
+  const { data: tourResponse, isLoading } = useFindTourByIdQuery(payment?.book_tour_id, {
+    skip: !open || !payment?.book_tour_id
+  });
+
+  const tourData = tourResponse?.data;
+
+  // Currency formatting
+  const currentCurrency = useSelector(
+    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+  );
+
+  const formatPrice = (amount: number, currencyCode: string) => {
+    const validCurrency = currencyCode || "IDR";
+    const isUSD = validCurrency === "USD";
+    return new Intl.NumberFormat(isUSD ? "en-US" : "id-ID", {
+      style: "currency",
+      currency: validCurrency,
+      minimumFractionDigits: isUSD ? 2 : 0,
+      maximumFractionDigits: isUSD ? 2 : 0
+    }).format(amount);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b p-6">
+          <DialogTitle>Detail Pesanan</DialogTitle>
+        </DialogHeader>
+
+        <div className="shrink-0 space-y-4 border-b bg-gray-50/30 p-6">
+          {/* Payment Info Card */}
+          <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Pembayaran</h3>
+            <div className="grid gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Invoice:</span>
+                <span className="font-mono font-medium text-blue-600">{payment?.invoice_code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Metode:</span>
+                <span className="font-medium capitalize">{payment?.payment_method}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Status:</span>
+                <span
+                  className={cn(
+                    "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                    payment?.status?.toLowerCase() === "success"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  )}>
+                  {payment?.status}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-gray-100 pt-2">
+                <span className="font-semibold text-gray-900">Total Dibayar:</span>
+                <span className="font-bold text-blue-600">
+                  {formatPrice(payment?.amount, payment?.currency)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tour Status Summary Card */}
+          {tourData && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-900">Booking Status</span>
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 capitalize">
+                  {tourData.status}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto p-6">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+            </div>
+          ) : tourData ? (
+            <div className="space-y-6">
+              {/* Itinerary Section Card */}
+              <div className="rounded-xl border border-gray-100 p-4">
+                <h3 className="mb-4 text-sm font-bold text-gray-900">
+                  Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
+                </h3>
+
+                <div className="space-y-0">
+                  {[...(tourData.book_tour_items || [])]
+                    .sort((a: any, b: any) => {
+                      const dateA = new Date(a.visit_date).getTime();
+                      const dateB = new Date(b.visit_date).getTime();
+                      if (dateA !== dateB) return dateA - dateB;
+                      // Stable secondary sort using created_at
+                      const seqA = new Date(a.created_at || 0).getTime();
+                      const seqB = new Date(b.created_at || 0).getTime();
+                      return seqA - seqB;
+                    })
+                    .map((item: any, idx: number) => (
+                      <TourItemDetail
+                        key={item.id}
+                        item={item}
+                        index={idx}
+                        locale={locale}
+                        dayNumber={idx + 1}
+                      />
+                    ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// My Orders Content Component (Payment History)
+const MyOrdersContent = () => {
+  const currentCurrency = useSelector(
+    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+  );
+  const selectedCurrency = currentCurrency.code as "IDR" | "USD";
+  const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
+
+  const { data: paymentsData, isLoading, error } = useFindAllPaymentQuery();
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleOpenDetail = (payment: any) => {
+    setSelectedPayment(payment);
+    setIsDetailOpen(true);
+  };
+
+  const formatPrice = (amount: number) => {
+    const displayAmount = selectedCurrency === "USD" ? amount * idrToUsdRate : amount;
+    return new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
+      style: "currency",
+      currency: selectedCurrency,
+      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0,
+      maximumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+    }).format(displayAmount);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: any = {
+      pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
+      success: { label: "Success", color: "bg-green-100 text-green-700" },
+      failed: { label: "Failed", color: "bg-red-100 text-red-700" }
+    };
+    return (
+      statusConfig[status.toLowerCase()] || { label: status, color: "bg-gray-100 text-gray-700" }
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (error || !paymentsData?.data || paymentsData.data.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <Wallet className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+        <h3 className="text-lg font-medium text-gray-900">Belum ada pesanan</h3>
+        <p className="text-gray-500">Riwayat transaksi Anda akan muncul di sini</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <h2 className="mb-6 text-2xl font-bold text-gray-900">Pesanan Saya</h2>
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+              Invoice Code
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+              Amount
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+              Currency
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+              Payment Method
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 bg-white">
+          {paymentsData.data.map((payment: any) => {
+            const status = getStatusBadge(payment.status);
+            return (
+              <tr key={payment.id} className="transition-colors hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="font-mono text-sm font-medium text-blue-600">
+                    {payment.invoice_code || payment.id}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm font-semibold whitespace-nowrap text-gray-900">
+                  {new Intl.NumberFormat(payment.currency === "USD" ? "en-US" : "id-ID", {
+                    minimumFractionDigits: payment.currency === "USD" ? 2 : 0,
+                    maximumFractionDigits: payment.currency === "USD" ? 2 : 0
+                  }).format(payment.amount)}
+                </td>
+                <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+                  {payment.currency}
+                </td>
+                <td className="px-10 py-4 text-sm whitespace-nowrap text-gray-500">
+                  {payment.payment_method === "paypal" ? (
+                    <div className="items-center">
+                      <Image
+                        src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+                        alt="PayPal"
+                        width={16}
+                        height={16}
+                        className="h-4 w-auto text-blue-500"
+                      />
+                      {/* <span>PayPal</span> */}
+                    </div>
+                  ) : (
+                    <span className="capitalize">{payment.payment_method}</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
+                      {status.label}
+                    </span>
+                    <button
+                      onClick={() => handleOpenDetail(payment)}
+                      className="rounded-full p-1 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600">
+                      <Icon name="Eye" className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* Detail Modal */}
+      <OrderDetailModal
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        payment={selectedPayment}
+      />
     </div>
   );
 };
@@ -1237,16 +1565,7 @@ const DesktopProfileView = ({
                   <Wallet className="h-5 w-5" />
                   <span className="font-medium">Simpan Tiket</span>
                 </button>
-                <button
-                  onClick={() => setActiveTab("promo")}
-                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
-                    activeTab === "promo"
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}>
-                  <Gift className="h-5 w-5" />
-                  <span className="font-medium">Info Promo</span>
-                </button>
+
                 <button
                   onClick={() => setActiveTab("settings")}
                   className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
@@ -1275,6 +1594,8 @@ const DesktopProfileView = ({
             <div className="rounded-lg bg-white p-8 shadow-sm">
               {activeTab === "my-booking" ? (
                 <MyBookingContent userName={userName} />
+              ) : activeTab === "orders" ? (
+                <MyOrdersContent />
               ) : (
                 <>
                   <h2 className="mb-6 text-2xl font-bold text-gray-900">Informasi Akun</h2>

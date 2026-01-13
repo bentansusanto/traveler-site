@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useFindAllDestinationQuery } from "@/store/services/destination.service";
 import { useLocale } from "next-intl";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 
@@ -127,6 +128,7 @@ export const DestinationSection = () => {
         className={`group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white transition-all ${
           isMobile ? "w-[calc(50vw-1.75rem)] flex-shrink-0" : "min-w-[300px]"
         }`}>
+         <Link href={`/${locale}/tour-holiday-religion/${translation?.slug || item.id}`}>
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <Image
@@ -177,6 +179,7 @@ export const DestinationSection = () => {
             </p>
           </div>
         </div>
+        </Link>
       </div>
     );
   };

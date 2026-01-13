@@ -40,7 +40,6 @@ export const UseRefreshToken = () => {
           sameSite: "lax",
           path: "/"
         });
-        console.log("Token refreshed successfully");
         return true;
       }
 

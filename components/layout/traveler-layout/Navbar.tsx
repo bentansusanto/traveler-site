@@ -44,7 +44,6 @@ export const Navbar = () => {
   // Debug log
   React.useEffect(() => {
     if (typeof window !== "undefined") {
-      console.log("Navbar Redux Auth Check:", { isLoggedIn, userName });
     }
   }, [isLoggedIn, userName]);
   const { handleLogout, isLoading: isLoggingOut } = useLogout();
