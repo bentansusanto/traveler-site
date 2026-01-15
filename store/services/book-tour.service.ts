@@ -35,8 +35,16 @@ export const bookTourService = createApi({
         url: `/book-tours/find/${id}`,
         method: "GET"
       })
+    }),
+    // update status book tour
+    updateStatusTour: builder.mutation<any, any>({
+      query: ({ id, data }) => ({
+        url: `/book-tours/update-status/${id}`,
+        method: "PUT",
+        body: data
+      })
     })
   })
 });
 
-export const { useCreateTourMutation, useGetAllTourQuery, useFindTourByIdQuery } = bookTourService;
+export const { useCreateTourMutation, useGetAllTourQuery, useFindTourByIdQuery, useUpdateStatusTourMutation } = bookTourService;

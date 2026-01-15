@@ -27,7 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLogout } from "@/hooks/useLogout";
 import { cn } from "@/lib/utils";
 import { useGetUserQuery } from "@/store/services/auth.service";
-import { useFindTourByIdQuery, useGetAllTourQuery } from "@/store/services/book-tour.service";
+import { useFindTourByIdQuery, useGetAllTourQuery, useUpdateStatusTourMutation } from "@/store/services/book-tour.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useFindAllPaymentQuery } from "@/store/services/payment.service";
 import {
@@ -887,7 +887,11 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
   const selectedCurrency = currentCurrency.code as "IDR" | "USD";
   const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
 
-  const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined);
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    refetch
+  } = useGetAllTourQuery(undefined);
   const {
     data: touristsData,
     isLoading: isLoadingTourists,
@@ -912,6 +916,35 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
   const handleOpenEditModal = (booking: any) => {
     setEditingBooking(booking);
     setIsEditModalOpen(true);
+  };
+
+  // Cancel Tour Logic
+  const [updateStatusTour, { isLoading: isUpdatingStatus }] = useUpdateStatusTourMutation();
+  const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
+  const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
+
+  const handleCancelTour = (bookingId: string) => {
+    setBookingToCancelId(bookingId);
+    setIsCancelAlertOpen(true);
+  };
+
+  const onConfirmCancel = async () => {
+    if (!bookingToCancelId) return;
+
+    try {
+      await updateStatusTour({
+        id: bookingToCancelId,
+        data: { status: "cancelled" }
+      }).unwrap();
+      toast.success("Tour has been canceled successfully");
+      refetch(); // Refetch bookings list
+    } catch (error) {
+      console.error("Failed to cancel tour:", error);
+      toast.error("Failed to cancel tour");
+    } finally {
+      setIsCancelAlertOpen(false);
+      setBookingToCancelId(null);
+    }
   };
 
   if (isLoading) {
@@ -1086,7 +1119,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
               </div>
 
               {/* Action Buttons */}
-              {!["ongoing", "completed"].includes(booking.status.toLowerCase()) && (
+              {!["ongoing", "completed", "cancelled"].includes(booking.status.toLowerCase()) && (
                 <div className="flex gap-2">
                   {touristCount > 0 && (
                     <Link href={`/${locale}/payments?order_id=${booking.id}`} className="flex-1">
@@ -1098,7 +1131,8 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600">
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => handleCancelTour(booking.id)}>
                     Cancel Tour
                   </Button>
                 </div>
@@ -1117,6 +1151,27 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
           refetchTourists();
         }}
       />
+
+      {/* Cancel Confirmation Alert */}
+      <AlertDialog open={isCancelAlertOpen} onOpenChange={setIsCancelAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This tour booking will be permanently cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBookingToCancelId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onConfirmCancel}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? "Cancelling..." : "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Booking Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

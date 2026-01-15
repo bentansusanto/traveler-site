@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { orderTourSchema } from "@/modules/Tourist/OrderTour/schema";
-import { useGetAllTourQuery } from "@/store/services/book-tour.service";
+import {
+  useGetAllTourQuery,
+  useUpdateStatusTourMutation
+} from "@/store/services/book-tour.service";
 import {
   useCreateTouristMutation,
   useDeleteTouristMutation,
@@ -405,18 +408,26 @@ const TravelerEditModal = ({
 
 export const MyBookingPageMobile = () => {
   const locale = useLocale();
-  const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined);
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    refetch: refetchBookings
+  } = useGetAllTourQuery(undefined);
   const {
     data: touristsData,
     isLoading: isLoadingTourists,
     refetch: refetchTourists
   } = useFindAllTouristQuery();
+  const [updateStatusTour, { isLoading: isUpdatingStatus }] = useUpdateStatusTourMutation();
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [dataDetail, setDataDetail] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
+  const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
 
   const filters = ["All", "Tour Holiday & Religion", "Flight", "Hotels"];
 
@@ -440,6 +451,30 @@ export const MyBookingPageMobile = () => {
   const handleOpenDetailModal = (booking: any) => {
     setDataDetail(booking);
     setIsDetailModalOpen(true);
+  };
+
+  const handleCancelTour = (bookingId: string) => {
+    setBookingToCancelId(bookingId);
+    setIsCancelAlertOpen(true);
+  };
+
+  const onConfirmCancel = async () => {
+    if (!bookingToCancelId) return;
+
+    try {
+      await updateStatusTour({
+        id: bookingToCancelId,
+        data: { status: "cancelled" }
+      }).unwrap();
+      toast.success("Tour has been canceled successfully");
+      refetchBookings();
+    } catch (error) {
+      console.error("Failed to cancel tour:", error);
+      toast.error("Failed to cancel tour");
+    } finally {
+      setIsCancelAlertOpen(false);
+      setBookingToCancelId(null);
+    }
   };
 
   const services = [
@@ -547,18 +582,22 @@ export const MyBookingPageMobile = () => {
                       {translation?.name || "Destination"}
                     </h3>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-1 h-6 w-6 text-gray-400 hover:text-blue-600"
-                    onClick={() => handleOpenDetailModal(booking)}>
-                    <Icon name="Eye" className="h-4 w-4" />
-                  </Button>
-                  <Badge
-                    variant="secondary"
-                    className={cn("ml-2 shrink-0 font-medium", statusBadge.color)}>
-                    {statusBadge.label}
-                  </Badge>
+                  <div className="flex items-center">
+                    {booking.status.toLowerCase() !== "cancelled" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-1 h-6 w-6 text-gray-400 hover:text-blue-600"
+                        onClick={() => handleOpenDetailModal(booking)}>
+                        <Icon name="Eye" className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      className={cn("ml-2 shrink-0 font-medium", statusBadge.color)}>
+                      {statusBadge.label}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="mb-4 space-y-1.5 text-sm text-gray-500">
@@ -592,27 +631,35 @@ export const MyBookingPageMobile = () => {
                   </div>
 
                   <div className="grid gap-2">
-                    {!["ongoing", "completed", "pending"].includes(
+                    {!["ongoing", "completed", "pending", "cancelled"].includes(
                       booking.status.toLowerCase()
                     ) && (
                       <>
-                        {touristCount === 0 || booking.status === "cancelled" ? (
-                          <Button
-                            variant="destructive"
-                            className="w-full bg-red-50 text-red-600 hover:bg-red-100"
-                            onClick={() => handleOpenEditModal(booking)}>
-                            Cancel Tour
-                          </Button>
+                        {touristCount === 0 ? (
+                          <>
+                            <Button
+                              variant="destructive"
+                              className="w-full bg-red-50 text-red-600 hover:bg-red-100"
+                              onClick={() => handleCancelTour(booking.id)}>
+                              {isUpdatingStatus ? "Cancelling..." : "Cancel Tour"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-full border-blue-200 text-blue-600 hover:bg-blue-50"
+                              onClick={() => handleOpenEditModal(booking)}>
+                              Add Data Traveler
+                            </Button>
+                          </>
                         ) : (
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
                               className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => handleOpenEditModal(booking)}>
-                              Cancel Tour
+                              onClick={() => handleCancelTour(booking.id)}>
+                              {isUpdatingStatus ? "Cancelling..." : "Cancel Tour"}
                             </Button>
                             <Link
-                              href={`/${locale}/orders/order-tour?id=${booking.id}`}
+                              href={`/${locale}/payments?order_id=${booking.id}`}
                               className="flex-1">
                               <Button className="w-full bg-blue-600 hover:bg-blue-700">
                                 Checkout
@@ -650,9 +697,28 @@ export const MyBookingPageMobile = () => {
         }}
       />
 
+      <AlertDialog open={isCancelAlertOpen} onOpenChange={setIsCancelAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This tour booking will be permanently cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBookingToCancelId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onConfirmCancel}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? "Cancelling..." : "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <BookTourDetail open={isDetailModalOpen} setOpen={setIsDetailModalOpen} data={dataDetail} />
 
-      {/* Bottom Actions - Sort/Filter (Visual Only for now as per screenshot layout) */}
       {/* Bottom Actions - Sort/Filter (Visual Only for now as per screenshot layout) */}
       <MobileBottomNavbar />
     </div>

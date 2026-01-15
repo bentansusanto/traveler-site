@@ -59,8 +59,15 @@ export const Navbar = () => {
   });
 
   React.useEffect(() => {
-    if (bookingsData?.data?.length > 0) {
+    // Check if there are any active bookings (not completed and not cancelled)
+    const activeBookings = bookingsData?.data?.filter(
+      (booking: any) => booking.status !== "completed" && booking.status !== "cancelled"
+    );
+
+    if (activeBookings?.length > 0) {
       dispatch(setHasNewBooking(true));
+    } else {
+      dispatch(setHasNewBooking(false));
     }
   }, [bookingsData, dispatch]);
 

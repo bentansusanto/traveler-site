@@ -9,8 +9,9 @@ import { useCreatePaymentMutation } from "@/store/services/payment.service";
 import { useFindAllTouristQuery } from "@/store/services/tourist.service";
 import { useLocale } from "next-intl";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
+import { MobilePaymentPage } from "./MobilePayment";
 
 interface PaymentPageProps {
   orderId: string;
@@ -46,11 +47,12 @@ const SummaryTourItem = ({ item, locale }: { item: any; locale: string }) => {
 
 export const PaymentPage = ({ orderId }: PaymentPageProps) => {
   const locale = useLocale();
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Fetch Booking Data
+  // Fetch Booking Data - MUST be called before any conditional returns
   const { data: bookingsData, isLoading: isLoadingBooking } = useGetAllTourQuery(undefined);
 
-  // Fetch Tourist Data
+  // Fetch Tourist Data - MUST be called before any conditional returns
   const { data: touristsData, isLoading: isLoadingTourists } = useFindAllTouristQuery();
 
   const booking = useMemo(() => {
@@ -96,20 +98,30 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
     return totalPrice;
   }, [totalPrice, selectedCurrency, idrToUsdRate]);
 
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const handlePayment = async () => {
     if (!booking || !orderId) return;
 
     setPaymentError(null);
 
     try {
-
       const result = await createPayment({
         book_tour_id: orderId,
         payment_method: "paypal",
         currency: "IDR", // Always IDR because database stores amount in IDR
         exchange_rate: idrToUsdRate // Send dynamic exchange rate to backend
       }).unwrap();
-
 
       // Redirect to PayPal in new tab
       if (result.data?.redirect_url) {
@@ -133,6 +145,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
     }
   };
 
+  // NOW we can do conditional rendering after all hooks are called
   if (isLoadingBooking || isLoadingTourists) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -150,6 +163,13 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
       </div>
     );
   }
+
+  // Render mobile version for small screens
+  if (isMobile) {
+    return <MobilePaymentPage orderId={orderId} />;
+  }
+
+  // Desktop version continues below
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10 md:px-0">
