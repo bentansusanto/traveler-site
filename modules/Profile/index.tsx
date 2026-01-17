@@ -23,13 +23,23 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLogout } from "@/hooks/useLogout";
 import { cn } from "@/lib/utils";
 import { useGetUserQuery } from "@/store/services/auth.service";
-import { useFindTourByIdQuery, useGetAllTourQuery, useUpdateStatusTourMutation } from "@/store/services/book-tour.service";
+import {
+  useFindTourByIdQuery,
+  useGetAllTourQuery,
+  useUpdateStatusTourMutation
+} from "@/store/services/book-tour.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useFindAllPaymentQuery } from "@/store/services/payment.service";
+import {
+  useCreateProfileMutation,
+  useGetProfileQuery,
+  useUpdateProfileMutation
+} from "@/store/services/profile.service";
 import {
   useCreateTouristMutation,
   useDeleteTouristMutation,
@@ -57,6 +67,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "sonner";
 import { orderTourSchema } from "../Tourist/OrderTour/schema";
+import { ProfileFormValues, profileSchema } from "./schema";
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle
+} from "@/components/ui/drawer";
 
 export const ProfilePage = () => {
   const isMobile = useIsMobile();
@@ -120,6 +139,103 @@ const MobileProfileView = ({
   isLoading?: boolean;
 }) => {
   const { handleLogout, isLoading: isLoggingOut } = useLogout();
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+
+  // Fetch profile data
+  const {
+    data: profileData,
+    isLoading: isLoadingProfile,
+    error: profileError,
+    refetch: refetchProfile
+  } = useGetProfileQuery();
+
+  // Handle "Profile not found" as valid empty state
+  const isProfileNotFound =
+    profileError &&
+    "data" in profileError &&
+    typeof profileError.data === "object" &&
+    profileError.data !== null &&
+    "message" in profileError.data &&
+    (profileError.data as any).message === "Profile not found";
+
+  const profile = isProfileNotFound ? null : profileData?.data;
+
+  // Fetch user data for userId
+  const { data: userData } = useGetUserQuery();
+  const userId = userData?.data?.id;
+
+  // Mutations
+  const [createProfile, { isLoading: isCreating }] = useCreateProfileMutation();
+  const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Formik setup for mobile
+  const formik = useFormik<ProfileFormValues>({
+    initialValues: {
+      phone_number: profile?.phone_number || "",
+      address: profile?.address || "",
+      state: profile?.state || "",
+      country: profile?.country || ""
+    },
+    enableReinitialize: true,
+    validate: (values) => {
+      const result = profileSchema.safeParse(values);
+      if (!result.success) {
+        const errors: any = {};
+        result.error.issues.forEach((issue) => {
+          const path = issue.path[0];
+          if (path) {
+            errors[path] = issue.message;
+          }
+        });
+        return errors;
+      }
+      return {};
+    },
+    onSubmit: async (values) => {
+      try {
+        if (!userId) {
+          toast.error("User ID not found");
+          return;
+        }
+
+        if (profile?.id) {
+          await updateProfile({
+            id: profile.id,
+            user_id: userId,
+            ...values
+          }).unwrap();
+          toast.success("Profile updated successfully!");
+        } else {
+          await createProfile({
+            user_id: userId,
+            ...values
+          }).unwrap();
+          toast.success("Profile created successfully!");
+        }
+
+        await refetchProfile();
+        setIsEditing(false);
+        setIsAccountSettingsOpen(false);
+      } catch (error: any) {
+        toast.error(error?.data?.message || "Failed to save profile");
+      }
+    }
+  });
+
+  const handleCancelMobile = () => {
+    formik.resetForm({
+      values: {
+        phone_number: profile?.phone_number || "",
+        address: profile?.address || "",
+        state: profile?.state || "",
+        country: profile?.country || ""
+      }
+    });
+    setIsEditing(false);
+  };
+
+  const isSubmitting = isCreating || isUpdating;
 
   // If not logged in, show different layout
   if (!isLoggedIn) {
@@ -165,7 +281,7 @@ const MobileProfileView = ({
 
             {/* Customer Care 24/7 */}
             <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-bold text-gray-900">Customer Care 24/7</h2>
+              <h2 className="mb-4 font-bold text-gray-900">Customer Care</h2>
               <div className="space-y-3">
                 <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
                   <div className="flex items-center gap-3">
@@ -178,15 +294,6 @@ const MobileProfileView = ({
                         Baru
                       </span>
                     </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                </button>
-                <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                      <Headphones className="h-5 w-5 text-gray-600" />
-                    </div>
-                    <p className="font-medium text-gray-900">Bantuan Langsung</p>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
@@ -292,7 +399,7 @@ const MobileProfileView = ({
 
           {/* Customer Care Section */}
           <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="mb-4 font-semibold text-gray-900">Customer Care 24/7</h3>
+            <h3 className="mb-4 font-semibold text-gray-900">Customer Care</h3>
             <div className="space-y-3">
               <Link
                 href="#"
@@ -302,25 +409,25 @@ const MobileProfileView = ({
                     <Headphones className="h-5 w-5 text-gray-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Pusat Bantuan halo tiket</p>
-                    <span className="inline-block rounded bg-red-500 px-2 py-0.5 text-xs text-white">
-                      Baru
-                    </span>
+                    <p className="font-medium text-gray-900">Pusat Bantuan</p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
               </Link>
-              <Link
-                href="#"
-                className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-gray-100 p-2">
-                    <Headphones className="h-5 w-5 text-gray-600" />
+              {/* Settings Account */}
+              <div>
+                <button
+                  onClick={() => setIsAccountSettingsOpen(true)}
+                  className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-gray-100 p-2">
+                      <Settings className="h-5 w-5 text-gray-600" />
+                    </div>
+                    <p className="font-medium text-gray-900">Pengaturan Akun</p>
                   </div>
-                  <p className="font-medium text-gray-900">Bantuan Langsung</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-              </Link>
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -356,7 +463,7 @@ const MobileProfileView = ({
           </div>
 
           {/* About Section */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
+          {/* <div className="rounded-2xl bg-white p-5 shadow-sm">
             <h3 className="mb-4 font-semibold text-gray-900">Lainnya</h3>
             <Link
               href="#"
@@ -367,7 +474,7 @@ const MobileProfileView = ({
               </div>
               <ChevronRight className="h-5 w-5 text-gray-400" />
             </Link>
-          </div>
+          </div> */}
 
           {/* Logout Section - Only show when logged in */}
           {isLoggedIn && (
@@ -385,6 +492,169 @@ const MobileProfileView = ({
             </div>
           )}
         </div>
+
+        {/* Account Settings Drawer */}
+        <Drawer open={isAccountSettingsOpen} onOpenChange={setIsAccountSettingsOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Informasi Akun</DrawerTitle>
+              <DrawerDescription>
+                {isEditing ? "Edit informasi profil Anda" : "Lihat informasi profil Anda"}
+              </DrawerDescription>
+            </DrawerHeader>
+
+            <form onSubmit={formik.handleSubmit} className="px-4 pb-4">
+              <div className="space-y-4">
+                {/* Full Name - Read Only */}
+                <div>
+                  <Label htmlFor="mobile-fullName" className="text-sm font-medium text-gray-700">
+                    Nama Lengkap
+                  </Label>
+                  <Input
+                    id="mobile-fullName"
+                    value={userName || ""}
+                    disabled
+                    className="mt-1 bg-gray-50"
+                  />
+                </div>
+
+                {/* Email - Read Only */}
+                <div>
+                  <Label htmlFor="mobile-email" className="text-sm font-medium text-gray-700">
+                    Email
+                  </Label>
+                  <Input
+                    id="mobile-email"
+                    type="email"
+                    value={userEmail || ""}
+                    disabled
+                    className="mt-1 bg-gray-50"
+                  />
+                </div>
+
+                {/* Address */}
+                <div>
+                  <Label htmlFor="mobile-address" className="text-sm font-medium text-gray-700">
+                    Address
+                  </Label>
+                  <Textarea
+                    id="mobile-address"
+                    name="address"
+                    value={formik.values.address}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    disabled={!isEditing}
+                    className={`mt-1 text-sm ${!isEditing ? "bg-gray-50" : ""}`}
+                  />
+                  {formik.touched.address && formik.errors.address && (
+                    <p className="mt-1 text-sm text-red-600">{formik.errors.address}</p>
+                  )}
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <Label
+                    htmlFor="mobile-phone_number"
+                    className="text-sm font-medium text-gray-700">
+                    No. Handphone
+                  </Label>
+                  <Input
+                    id="mobile-phone_number"
+                    name="phone_number"
+                    value={formik.values.phone_number}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    disabled={!isEditing}
+                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                  />
+                  {formik.touched.phone_number && formik.errors.phone_number && (
+                    <p className="mt-1 text-sm text-red-600">{formik.errors.phone_number}</p>
+                  )}
+                </div>
+
+                {/* State */}
+                <div>
+                  <Label htmlFor="mobile-state" className="text-sm font-medium text-gray-700">
+                    State
+                  </Label>
+                  <Input
+                    id="mobile-state"
+                    name="state"
+                    value={formik.values.state}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    disabled={!isEditing}
+                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                  />
+                  {formik.touched.state && formik.errors.state && (
+                    <p className="mt-1 text-sm text-red-600">{formik.errors.state}</p>
+                  )}
+                </div>
+
+                {/* Country */}
+                <div>
+                  <Label htmlFor="mobile-country" className="text-sm font-medium text-gray-700">
+                    Country
+                  </Label>
+                  <Input
+                    id="mobile-country"
+                    name="country"
+                    value={formik.values.country}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    disabled={!isEditing}
+                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                  />
+                  {formik.touched.country && formik.errors.country && (
+                    <p className="mt-1 text-sm text-red-600">{formik.errors.country}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex gap-3">
+                {!isEditing ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => setIsAccountSettingsOpen(false)}
+                      variant="outline"
+                      className="flex-1">
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsEditing(true);
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700">
+                      Edit Profil
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelMobile}
+                      disabled={isSubmitting}
+                      className="flex-1">
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700">
+                      {isSubmitting ? "Menyimpan..." : "Simpan"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </form>
+          </DrawerContent>
+        </Drawer>
       </div>
 
       {/* Mobile Bottom Navbar */}
@@ -1557,6 +1827,106 @@ const DesktopProfileView = ({
   setActiveTab: (tab: string) => void;
 }) => {
   const { handleLogout, isLoading: isLoggingOut } = useLogout();
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Fetch user data to get user ID (still needed for create/update)
+  const { data: userData } = useGetUserQuery();
+  const userId = userData?.data?.id;
+
+  // Fetch profile data using the secure /profiles/me endpoint
+  const {
+    data: profileData,
+    isLoading: isLoadingProfile,
+    error: profileError,
+    refetch: refetchProfile
+  } = useGetProfileQuery();
+
+  // Extract profile information
+  // Handle "Profile not found" as valid empty state (profile doesn't exist yet)
+  const isProfileNotFound =
+    profileError &&
+    "data" in profileError &&
+    typeof profileError.data === "object" &&
+    profileError.data !== null &&
+    "message" in profileError.data &&
+    (profileError.data as any).message === "Profile not found";
+
+  const profile = isProfileNotFound ? null : profileData?.data;
+
+  // Mutations
+  const [createProfile, { isLoading: isCreating }] = useCreateProfileMutation();
+  const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+
+  // Formik setup
+  const formik = useFormik<ProfileFormValues>({
+    initialValues: {
+      phone_number: profile?.phone_number || "",
+      address: profile?.address || "",
+      state: profile?.state || "",
+      country: profile?.country || ""
+    },
+    enableReinitialize: true,
+    validate: (values) => {
+      const result = profileSchema.safeParse(values);
+      if (!result.success) {
+        const errors: any = {};
+        result.error.issues.forEach((issue) => {
+          const path = issue.path[0];
+          if (path) {
+            errors[path] = issue.message;
+          }
+        });
+        return errors;
+      }
+      return {};
+    },
+    onSubmit: async (values) => {
+      try {
+        if (!userId) {
+          toast.error("User ID not found");
+          return;
+        }
+
+        if (profile?.id) {
+          // Update existing profile
+          await updateProfile({
+            id: profile.id,
+            user_id: userId,
+            ...values
+          }).unwrap();
+          toast.success("Profile updated successfully!");
+        } else {
+          // Create new profile
+          await createProfile({
+            user_id: userId,
+            ...values
+          }).unwrap();
+          toast.success("Profile created successfully!");
+        }
+
+        // Manually refetch profile data to ensure UI updates
+        await refetchProfile();
+        setIsEditing(false);
+      } catch (error: any) {
+        toast.error(error?.data?.message || "Failed to save profile");
+      }
+    }
+  });
+
+  const handleCancel = () => {
+    formik.resetForm({
+      values: {
+        phone_number: profile?.phone_number || "",
+        address: profile?.address || "",
+        state: profile?.state || "",
+        country: profile?.country || ""
+      }
+    });
+    setIsEditing(false);
+  };
+
+  const isSubmitting = isCreating || isUpdating;
+
   return (
     <div className="bg-gray-50">
       <div className="mx-auto mt-[50px] max-w-7xl px-4 py-8">
@@ -1655,130 +2025,175 @@ const DesktopProfileView = ({
                 <>
                   <h2 className="mb-6 text-2xl font-bold text-gray-900">Informasi Akun</h2>
 
-                  {/* Personal Data Section */}
-                  <div className="mb-8">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">Data Pribadi</h3>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <Label
-                          htmlFor="fullName"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Nama lengkap
-                        </Label>
-                        <Input
-                          id="fullName"
-                          defaultValue="Ardiansyah"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="email"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Email
-                        </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          defaultValue="ardiansyah@gmail.com"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="gender"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Kelamin
-                        </Label>
-                        <Input
-                          id="gender"
-                          defaultValue="Batam"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="phone"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          No. Handphone
-                        </Label>
-                        <Input
-                          id="phone"
-                          defaultValue="Indonesia"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="city"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Kata Tempat Tinggal
-                        </Label>
-                        <Input
-                          id="city"
-                          defaultValue="Batam"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="country"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Negara
-                        </Label>
-                        <Input
-                          id="country"
-                          defaultValue="Indonesia"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
+                  {/* Loading State */}
+                  {isLoadingProfile ? (
+                    <div className="space-y-6">
+                      <div className="animate-pulse">
+                        <div className="mb-4 h-6 w-32 rounded bg-gray-200"></div>
+                        <div className="grid grid-cols-2 gap-6">
+                          {[...Array(6)].map((_, i) => (
+                            <div key={i}>
+                              <div className="mb-2 h-4 w-24 rounded bg-gray-200"></div>
+                              <div className="h-10 rounded bg-gray-200"></div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Personal Data Section */}
+                      <form onSubmit={formik.handleSubmit}>
+                        <div className="mb-8">
+                          <h3 className="mb-4 text-lg font-semibold text-gray-900">Data Pribadi</h3>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <Label
+                                htmlFor="fullName"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                Nama lengkap
+                              </Label>
+                              <Input
+                                id="fullName"
+                                value={userName || ""}
+                                readOnly
+                                className="border-gray-300 bg-gray-50 focus:border-blue-500 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor="email"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                Email
+                              </Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={userEmail || ""}
+                                disabled
+                                className="border-gray-300 bg-gray-50 focus:border-blue-500 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Label
+                                htmlFor="address"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                Address
+                              </Label>
+                              <Textarea
+                                id="address"
+                                name="address"
+                                value={formik.values.address}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                disabled={!isEditing}
+                                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                                  !isEditing ? "bg-gray-50" : ""
+                                }`}
+                              />
+                              {formik.touched.address && formik.errors.address && (
+                                <p className="mt-1 text-sm text-red-600">{formik.errors.address}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor="phone_number"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                No. Handphone
+                              </Label>
+                              <Input
+                                id="phone_number"
+                                name="phone_number"
+                                value={formik.values.phone_number}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                disabled={!isEditing}
+                                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                                  !isEditing ? "bg-gray-50" : ""
+                                }`}
+                              />
+                              {formik.touched.phone_number && formik.errors.phone_number && (
+                                <p className="mt-1 text-sm text-red-600">
+                                  {formik.errors.phone_number}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor="state"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                State
+                              </Label>
+                              <Input
+                                id="state"
+                                name="state"
+                                value={formik.values.state}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                disabled={!isEditing}
+                                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                                  !isEditing ? "bg-gray-50" : ""
+                                }`}
+                              />
+                              {formik.touched.state && formik.errors.state && (
+                                <p className="mt-1 text-sm text-red-600">{formik.errors.state}</p>
+                              )}
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor="country"
+                                className="mb-2 block text-sm font-medium text-gray-700">
+                                Country
+                              </Label>
+                              <Input
+                                id="country"
+                                name="country"
+                                value={formik.values.country}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                disabled={!isEditing}
+                                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                                  !isEditing ? "bg-gray-50" : ""
+                                }`}
+                              />
+                              {formik.touched.country && formik.errors.country && (
+                                <p className="mt-1 text-sm text-red-600">{formik.errors.country}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
 
-                  {/* Password Section */}
-                  <div className="mb-8">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                      Pengaturan Password
-                    </h3>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <Label
-                          htmlFor="password"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Password
-                        </Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          defaultValue="........"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="retryPassword"
-                          className="mb-2 block text-sm font-medium text-gray-700">
-                          Retry Password
-                        </Label>
-                        <Input
-                          id="retryPassword"
-                          type="password"
-                          defaultValue="........"
-                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      className="border-gray-300 text-gray-700 hover:bg-gray-50">
-                      Batal
-                    </Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700">Simpan</Button>
-                  </div>
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-3">
+                          {!isEditing ? (
+                            <Button
+                              type="button"
+                              onClick={() => setIsEditing(true)}
+                              className="bg-blue-600 hover:bg-blue-700">
+                              Edit Profil
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancel}
+                                disabled={isSubmitting}
+                                className="border-gray-300 text-gray-700 hover:bg-gray-50">
+                                Batal
+                              </Button>
+                              <Button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="bg-blue-600 hover:bg-blue-700">
+                                {isSubmitting ? "Menyimpan..." : "Simpan"}
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </form>
+                    </>
+                  )}
                 </>
               )}
             </div>

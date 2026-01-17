@@ -1,21 +1,17 @@
 "use client";
 import { useLoginMutation } from "@/store/services/auth.service";
+import { setLoginState } from "@/store/slices/authSlice";
 import { useFormik } from "formik";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { setLoginState } from "@/store/slices/authSlice";
+import { toast } from "sonner";
 import { initialLoginValues, loginSchema } from "./schema";
 
 export const HookLogin = () => {
   const [login, { isLoading }] = useLoginMutation();
   const router = useRouter();
   const dispatch = useDispatch();
-  const [statusMessage, setStatusMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   const formik = useFormik({
     initialValues: initialLoginValues,
@@ -33,9 +29,8 @@ export const HookLogin = () => {
       return {};
     },
     onSubmit: async (values) => {
-      setStatusMessage(null); // Clear previous message
       try {
-        const response = await login(values).unwrap();
+        const response = await login({ ...values, site: "traveller" }).unwrap();
 
         // Handle different response structures
         // Priority: session (actual API field) > access_token > token
@@ -65,27 +60,32 @@ export const HookLogin = () => {
 
           dispatch(setLoginState({ userName: response.data?.name || "User", token: accessToken }));
 
-          setStatusMessage({
-            type: "success",
-            text: "Login successful! Redirecting..."
-          });
+          toast.success("Login successful! Redirecting...");
 
           // Redirect to home or dashboard
           setTimeout(() => {
             router.push("/");
           }, 1000);
         } else {
-          console.error("Response structure:", response);
           throw new Error("No access token in response");
         }
       } catch (err: any) {
-        console.error("Login failed", err);
-        setStatusMessage({
-          type: "error",
-          text: err?.data?.message || err?.message || "Login failed. Please check your credentials."
-        });
+        console.error("Login Error:", err);
+
+        // Extract error message from Pacific Travel API structure or fallback
+        const errorMessage =
+          err?.data?.Error?.body ||
+          (Array.isArray(err?.data?.Error) ? err.data.Error[0]?.body : null) ||
+          err?.data?.message ||
+          err?.data?.Message ||
+          err?.message ||
+          err?.error ||
+          "Login failed. Please check your credentials.";
+
+        toast.error(errorMessage);
       }
     }
   });
-  return { formik, isLoading, statusMessage };
+
+  return { formik, isLoading };
 };

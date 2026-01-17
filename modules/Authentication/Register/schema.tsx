@@ -9,7 +9,8 @@ export const registerSchema = z.object({
     .regex(
       /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
       "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
-    )
+    ),
+  site: z.string().optional()
 });
 
 export type RegisterSchema = z.infer<typeof registerSchema>;
@@ -17,6 +18,5 @@ export type RegisterSchema = z.infer<typeof registerSchema>;
 export const initialRegisterValues = {
   name: "",
   email: "",
-  password: "",
-  role_id: "67d62f2f-4c61-4d6f-b84e-a01edf2af505"
-}
+  password: ""
+};

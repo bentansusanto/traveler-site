@@ -6,7 +6,7 @@ import Link from "next/link";
 import { HookLogin } from "./hooks";
 
 export const FormLogin = () => {
-  const { formik, isLoading, statusMessage } = HookLogin();
+  const { formik, isLoading } = HookLogin();
 
   return (
     <form onSubmit={formik.handleSubmit} className="mt-8 space-y-6">
@@ -52,7 +52,7 @@ export const FormLogin = () => {
           )}
         </div>
         <div className="text-end">
-          <Link href="#" className="ml-auto inline-block text-sm underline">
+          <Link href="/forgot-password" className="ml-auto inline-block text-sm underline">
             Forgot your password?
           </Link>
         </div>
@@ -66,16 +66,6 @@ export const FormLogin = () => {
           disabled={isLoading || !formik.isValid || !formik.dirty}>
           {isLoading ? "Signing in..." : "Sign in"}
         </Button>
-        {statusMessage && (
-          <div
-            className={`mt-2 rounded-md p-4 text-sm ${
-              statusMessage.type === "success"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}>
-            {statusMessage.text}
-          </div>
-        )}
       </div>
     </form>
   );

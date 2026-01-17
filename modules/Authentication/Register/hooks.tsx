@@ -29,7 +29,7 @@ export const HookRegister = () => {
     onSubmit: async (values) => {
       setStatusMessage(null); // Clear previous message
       try {
-        await register(values).unwrap();
+        await register({ ...values, site: "traveller" }).unwrap();
         localStorage.setItem("travel_verify_email", values.email);
         setStatusMessage({
           type: "success",

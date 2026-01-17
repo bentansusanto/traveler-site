@@ -9,6 +9,8 @@ import currencyReducer from "./slices/currencySlice";
 import uiReducer from "./slices/uiSlice";
 import { touristService } from "./services/tourist.service";
 import { paymentService } from "./services/payment.service";
+import { profileService } from "./services/profile.service";
+import { rolesService } from "./services/role.service";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +20,8 @@ export const store = configureStore({
     [bookTourService.reducerPath]: bookTourService.reducer,
     [touristService.reducerPath]: touristService.reducer,
     [paymentService.reducerPath]: paymentService.reducer,
+    [profileService.reducerPath]: profileService.reducer,
+    [rolesService.reducerPath]: rolesService.reducer,
     auth: authReducer,
     currency: currencyReducer,
     ui: uiReducer
@@ -29,7 +33,9 @@ export const store = configureStore({
       locationService.middleware,
       bookTourService.middleware,
       touristService.middleware,
-      paymentService.middleware
+      paymentService.middleware,
+      profileService.middleware,
+      rolesService.middleware
     )
 });
 

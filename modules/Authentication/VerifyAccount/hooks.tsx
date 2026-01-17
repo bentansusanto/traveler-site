@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export const HooksVerifyAccount = () => {
   const searchParams = useSearchParams();
-  const verifyToken = searchParams.get("verify_code");
+  const verifyToken = searchParams.get("verify_token");
   const [verifyUser] = useVerifyUserMutation();
   const [resendVerifyUser, { isLoading: isResending }] = useResendVerifyUserMutation();
   const [status, setStatus] = useState<{
