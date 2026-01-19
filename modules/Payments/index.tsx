@@ -123,9 +123,9 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
         exchange_rate: idrToUsdRate // Send dynamic exchange rate to backend
       }).unwrap();
 
-      // Redirect to PayPal in new tab
+      // Redirect to PayPal in same tab
       if (result.data?.redirect_url) {
-        window.open(result.data.redirect_url, "_blank");
+        window.location.href = result.data.redirect_url;
       } else {
         setPaymentError("Gagal mendapatkan URL pembayaran. Silakan coba lagi.");
       }

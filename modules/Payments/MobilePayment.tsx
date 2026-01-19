@@ -149,7 +149,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
       }).unwrap();
 
       if (result.data?.redirect_url) {
-        window.open(result.data.redirect_url, "_blank");
+        window.location.href = result.data.redirect_url;
       } else {
         setPaymentError("Gagal mendapatkan URL pembayaran. Silakan coba lagi.");
       }
@@ -241,7 +241,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
           </div>
         </div>
 
-          {/* Itinerary Section (Collapsible) */}
+        {/* Itinerary Section (Collapsible) */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <button
             onClick={() => setShowItinerary(!showItinerary)}
@@ -335,8 +335,6 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
             </p>
           </div>
         </div>
-
-
 
         {/* Error Alert */}
         {paymentError && (

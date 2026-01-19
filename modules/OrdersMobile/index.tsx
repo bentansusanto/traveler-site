@@ -1,16 +1,27 @@
 "use client";
 import Icon from "@/components/icon";
 import { MobileBottomNavbar } from "@/components/layout/traveler-layout/MobileBottomNavbar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useFindTourByIdQuery } from "@/store/services/book-tour.service";
-import { useFindAllPaymentQuery } from "@/store/services/payment.service";
-import { Calendar, Loader2, MapPin, Wallet } from "lucide-react";
+import { useCancelPaymentMutation, useFindAllPaymentQuery } from "@/store/services/payment.service";
+import { Calendar, Loader2, MapPin, Wallet, XCircle } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useState } from "react";
 import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 // Reuse and adapt TourItemDetail for consistency
 const TourItemDetail = ({
@@ -44,20 +55,6 @@ const TourItemDetail = ({
                 <h4 className="mb-1 text-sm font-bold text-gray-900">
                   {translation?.name || "Destination"}
                 </h4>
-
-                {/* Icon Row for Details - Summary */}
-                {/* {translation?.detail_tour && translation.detail_tour.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {translation.detail_tour.slice(0, 4).map((detail: string, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1 rounded-full border border-blue-100/50 bg-blue-50/50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                        <Icon name={detail} className="h-2.5 w-2.5" />
-                        <span className="capitalize">{detail}</span>
-                      </div>
-                    ))}
-                  </div>
-                )} */}
 
                 <div className="flex flex-col gap-1">
                   {item.destination?.location && (
@@ -123,6 +120,8 @@ const OrderDetailModal = ({
   const { data: tourResponse, isLoading } = useFindTourByIdQuery(payment?.book_tour_id, {
     skip: !open || !payment?.book_tour_id
   });
+  const [cancelPayment, { isLoading: isCancelling }] = useCancelPaymentMutation();
+  const [showCancelAlert, setShowCancelAlert] = useState(false);
 
   const tourData = tourResponse?.data;
 
@@ -130,8 +129,6 @@ const OrderDetailModal = ({
   const currentCurrency = useSelector(
     (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
   );
-  const selectedCurrency = currentCurrency.code as "IDR" | "USD";
-  const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
 
   const formatPrice = (amount: number, currencyCode: string) => {
     const validCurrency = currencyCode || "IDR";
@@ -144,99 +141,162 @@ const OrderDetailModal = ({
     }).format(amount);
   };
 
+  const handleCancelPayment = async () => {
+    try {
+      const result = await cancelPayment(payment.id).unwrap();
+      toast.success("Payment cancelled successfully");
+      setShowCancelAlert(false);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to cancel payment");
+    }
+  };
+
+  // Check if payment can be cancelled (only pending/failed status)
+  const canCancel =
+    payment?.status?.toLowerCase() === "pending" || payment?.status?.toLowerCase() === "failed";
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
-        <DialogHeader className="shrink-0 border-b p-6">
-          <DialogTitle>Detail Pesanan</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
+          <DialogHeader className="shrink-0 border-b p-6">
+            <DialogTitle>Detail Pesanan</DialogTitle>
+          </DialogHeader>
 
-        <div className="shrink-0 space-y-4 border-b bg-gray-50/30 p-6">
-          {/* Payment Info Card */}
-          <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Pembayaran</h3>
-            <div className="grid gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Invoice:</span>
-                <span className="font-mono font-medium text-blue-600">{payment?.invoice_code}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Metode:</span>
-                <span className="font-medium capitalize">{payment?.payment_method}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Status:</span>
-                <span
-                  className={cn(
-                    "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
-                    payment?.status?.toLowerCase() === "success"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  )}>
-                  {payment?.status}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-gray-100 pt-2">
-                <span className="font-semibold text-gray-900">Total Dibayar:</span>
-                <span className="font-bold text-blue-600">
-                  {formatPrice(payment?.amount, payment?.currency)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tour Status Summary Card */}
-          {tourData && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-blue-900">Booking Status</span>
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 capitalize">
-                  {tourData.status}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Tour Detail Itinerary */}
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : tourData ? (
-            <div className="space-y-6">
-              {/* Itinerary Section Card */}
-              <div className="rounded-xl border border-gray-100 p-4">
-                <h3 className="mb-4 text-sm font-bold text-gray-900">
-                  Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
-                </h3>
-                <div className="space-y-0">
-                  {[...(tourData.book_tour_items || [])]
-                    .sort((a: any, b: any) => {
-                      const dateA = new Date(a.visit_date).getTime();
-                      const dateB = new Date(b.visit_date).getTime();
-                      if (dateA !== dateB) return dateA - dateB;
-                      // Stable secondary sort using created_at
-                      const seqA = new Date(a.created_at || 0).getTime();
-                      const seqB = new Date(b.created_at || 0).getTime();
-                      return seqA - seqB;
-                    })
-                    .map((item: any, idx: number) => (
-                      <TourItemDetail
-                        key={item.id}
-                        item={item}
-                        dayNumber={idx + 1}
-                        locale={locale}
-                      />
-                    ))}
+          <div className="shrink-0 space-y-4 border-b bg-gray-50/30 p-6">
+            {/* Payment Info Card */}
+            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Pembayaran</h3>
+              <div className="grid gap-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Invoice:</span>
+                  <span className="font-mono font-medium text-blue-600">
+                    {payment?.invoice_code}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Metode:</span>
+                  <span className="font-medium capitalize">{payment?.payment_method}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Status:</span>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      payment?.status?.toLowerCase() === "success"
+                        ? "bg-green-100 text-green-700"
+                        : payment?.status?.toLowerCase() === "cancelled"
+                          ? "bg-gray-100 text-gray-700"
+                          : "bg-yellow-100 text-yellow-700"
+                    )}>
+                    {payment?.status}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-gray-100 pt-2">
+                  <span className="font-semibold text-gray-900">Total Dibayar:</span>
+                  <span className="font-bold text-blue-600">
+                    {formatPrice(payment?.amount, payment?.currency)}
+                  </span>
                 </div>
               </div>
             </div>
-          ) : null}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            {/* Tour Status Summary Card */}
+            {tourData && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-blue-900">Booking Status</span>
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 capitalize">
+                    {tourData.status}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 pb-24">
+            {/* Tour Detail Itinerary */}
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            ) : tourData ? (
+              <div className="space-y-6">
+                {/* Itinerary Section Card */}
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <h3 className="mb-4 text-sm font-bold text-gray-900">
+                    Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
+                  </h3>
+                  <div className="space-y-0">
+                    {[...(tourData.book_tour_items || [])]
+                      .sort((a: any, b: any) => {
+                        const dateA = new Date(a.visit_date).getTime();
+                        const dateB = new Date(b.visit_date).getTime();
+                        if (dateA !== dateB) return dateA - dateB;
+                        const seqA = new Date(a.created_at || 0).getTime();
+                        const seqB = new Date(b.created_at || 0).getTime();
+                        return seqA - seqB;
+                      })
+                      .map((item: any, idx: number) => (
+                        <TourItemDetail
+                          key={item.id}
+                          item={item}
+                          dayNumber={idx + 1}
+                          locale={locale}
+                        />
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Fixed Bottom Cancel Button */}
+          {canCancel && (
+            <div className="fixed right-0 bottom-0 left-0 border-t bg-white p-4 shadow-lg sm:relative sm:border-t-0 sm:shadow-none">
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setShowCancelAlert(true)}
+                disabled={isCancelling}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancel Payment
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Alert */}
+      <AlertDialog open={showCancelAlert} onOpenChange={setShowCancelAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Payment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this payment? This action cannot be undone. Your
+              booking will be reset to draft status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>No, Keep It</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelPayment}
+              disabled={isCancelling}
+              className="bg-red-600 hover:bg-red-700">
+              {isCancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                "Yes, Cancel Payment"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
