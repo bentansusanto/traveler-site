@@ -2,6 +2,7 @@ import { generateMeta } from "@/lib/utils";
 import { ResetPasswordPage } from "@/modules/Authentication/ResetPassword";
 import { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
+import { Suspense } from "react";
 
 export function generateStaticParams() {
   return [{ locale: "en" }, { locale: "id" }];
@@ -22,5 +23,9 @@ export default async function ResetPasswordPageV1({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <ResetPasswordPage />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordPage />
+    </Suspense>
+  );
 }

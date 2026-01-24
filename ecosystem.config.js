@@ -12,7 +12,7 @@ module.exports = {
       // Environment variables
       env: {
         NODE_ENV: "production",
-        PORT: 3002,
+        PORT: 3005,
         HOSTNAME: "0.0.0.0"
       },
 

@@ -2,10 +2,6 @@
 
 import { Hammer, Mail } from "lucide-react";
 
-export function generateStaticParams() {
-  return [{ locale: "en" }, { locale: "id" }];
-}
-
 export default function MaintenancePage() {
   return (
     <div

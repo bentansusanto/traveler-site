@@ -1,0 +1,57 @@
+
+> shadcn-ui-kit-free@0.5.0 build /Users/test/Documents/project-benny/travel-app/traveler-site
+> rm -rf .next && next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/test/pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/test/Documents/project-benny/travel-app/traveler-site/pnpm-lock.yaml
+
+▲ Next.js 16.1.0 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 11.3s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/34) ...
+[i18n] Invalid locale received: "undefined". Falling back to default.
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3002". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+[i18n] Invalid locale received: "undefined". Falling back to default.
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3002". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+  Generating static pages using 11 workers (8/34) 
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+  Generating static pages using 11 workers (16/34) 
+[i18n] Invalid locale received: "undefined". Falling back to default.
+[i18n] Invalid locale received: "undefined". Falling back to default.
+⨯ useSearchParams() should be wrapped in a suspense boundary at page "/[locale]/payments/success". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+    at Q (/Users/test/Documents/project-benny/travel-app/traveler-site/.next/server/chunks/ssr/a76b5_next_33a229ac._.js:2:2111)
+    at o (/Users/test/Documents/project-benny/travel-app/traveler-site/.next/server/chunks/ssr/a76b5_next_33a229ac._.js:4:5311)
+    at i (/Users/test/Documents/project-benny/travel-app/traveler-site/.next/server/chunks/ssr/e603d_travel-app_traveler-site_app_[locale]_payments_success_page_tsx_a3fdc092._.js:1:183)
+    at an (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:84360)
+    at ai (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86179)
+    at al (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:107953)
+    at as (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:105368)
+    at aa (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:84712)
+    at ai (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86228)
+    at ai (/Users/test/Documents/project-benny/travel-app/traveler-site/node_modules/.pnpm/next@16.1.0_@babel+core@7.28.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:104708)
+Error occurred prerendering page "/en/payments/success". Read more: https://nextjs.org/docs/messages/prerender-error
+Export encountered an error on /[locale]/payments/success/page: /en/payments/success, exiting the build.
+⨯ Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.
