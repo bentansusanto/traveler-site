@@ -243,7 +243,7 @@ const MobileProfileView = ({
       <>
         <div className="min-h-screen bg-gray-50 pb-20">
           {/* Blue Gradient Header */}
-          <div className="relative h-40 bg-gradient-to-br from-blue-500 to-blue-600 px-5 pt-8">
+          <div className="relative h-40 bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-8">
             <h1 className="text-2xl font-bold text-white">Welcome to Pacific Travelindo</h1>
           </div>
 
@@ -267,7 +267,7 @@ const MobileProfileView = ({
             </div>
 
             {/* Rewards Card */}
-            <div className="rounded-2xl bg-gradient-to-r from-teal-400 to-blue-400 p-5 shadow-sm">
+            <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="mb-1 font-semibold text-white">Lihat benefit buatmu di sini</h3>
@@ -352,7 +352,7 @@ const MobileProfileView = ({
     <>
       <div className="min-h-screen bg-gray-50 pb-20">
         {/* Blue Gradient Header */}
-        <div className="relative h-40 bg-gradient-to-br from-blue-500 to-blue-600 px-5 pt-8">
+        <div className="relative h-40 bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-8">
           <h1 className="text-2xl font-bold text-white">Hi, {userName}</h1>
         </div>
 
@@ -387,7 +387,7 @@ const MobileProfileView = ({
           </div>
 
           {/* Benefits Card */}
-          <div className="rounded-2xl bg-gradient-to-r from-teal-400 to-blue-400 p-5 text-white">
+          <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-5 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="mb-1 font-semibold">Lihat benefit buatmu di sini</h3>
@@ -756,7 +756,7 @@ const TourItemDetail = ({
             {/* Chevron icon */}
             <Icon
               name="ChevronDown"
-              className={`mt-1 h-5 w-5 flex-shrink-0 text-gray-400 transition-transform ${
+              className={`mt-1 h-5 w-5 shrink-0 text-gray-400 transition-transform ${
                 isExpanded ? "rotate-180" : ""
               }`}
             />
@@ -961,7 +961,7 @@ const TravelerEditModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90vh] max-w-2xl flex-col overflow-hidden p-0">
-        <DialogHeader className="flex-shrink-0 border-b p-6">
+        <DialogHeader className="shrink-0 border-b p-6">
           <DialogTitle className="text-xl font-bold">Traveler</DialogTitle>
         </DialogHeader>
 
@@ -1114,7 +1114,7 @@ const TravelerEditModal = ({
           </Button>
         </div>
 
-        <div className="flex-shrink-0 border-t bg-white p-6 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+        <div className="shrink-0 border-t bg-white p-6 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
           <Button
             className="w-full bg-blue-600 py-6 text-base font-semibold text-white hover:bg-blue-700"
             onClick={() => formik.handleSubmit()}
@@ -1374,7 +1374,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                       <div
                         key={t.id || idx}
                         className="flex items-center gap-2 text-sm text-gray-700">
-                        <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
                           {idx + 1}
                         </div>
                         <span className="truncate">

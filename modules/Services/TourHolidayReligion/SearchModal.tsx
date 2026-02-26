@@ -238,14 +238,14 @@ export const SearchModal = ({ open, onOpenChange, onLocationSelect }: SearchModa
                     }}
                     className="group flex w-full items-center gap-4 rounded-xl p-3 text-left transition-all hover:bg-blue-50">
                     {item.type === "location" ? (
-                      <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 transition-colors group-hover:bg-blue-100">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 transition-colors group-hover:bg-blue-100">
                         <Icon
                           name="MapPin"
                           className="size-6 text-gray-600 group-hover:text-blue-600"
                         />
                       </div>
                     ) : (
-                      <div className="relative size-12 flex-shrink-0 overflow-hidden rounded-xl">
+                      <div className="relative size-12 shrink-0 overflow-hidden rounded-xl">
                         <Image
                           src={item.thumbnail || "/images/placeholder.jpg"}
                           alt={item.translatedName || item.name}

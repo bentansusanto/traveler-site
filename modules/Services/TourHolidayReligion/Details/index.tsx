@@ -194,7 +194,7 @@ export const DestinationDetailsPage = () => {
                 </p>
               </div>
 
-              <div className="mt-12">
+              {/* <div className="mt-12">
                 <h3 className="text-lg font-bold text-gray-900">Detail Tour.</h3>
                 <div className="mt-4 flex flex-wrap gap-8">
                   <div className="flex items-center gap-3">
@@ -210,7 +210,7 @@ export const DestinationDetailsPage = () => {
                     <span className="text-sm font-medium text-gray-600">5 Keberangkatan</span>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <div className="mt-12">
                 <h3 className="text-lg font-bold text-gray-900">Benefits.</h3>
@@ -227,6 +227,33 @@ export const DestinationDetailsPage = () => {
                   ))}
                 </ul>
               </div>
+
+              {translation.detail_tour && translation.detail_tour.length > 0 && (
+                <div className="mt-12">
+                  <h3 className="text-lg font-bold text-gray-900">Detail Tour.</h3>
+                  <div className="mt-6 flex flex-col">
+                    {translation.detail_tour.map((item: string, index: number) => (
+                      <div key={index} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-blue-100">
+                            {index + 1}
+                          </div>
+                          {index < translation.detail_tour.length - 1 && (
+                            <div className="w-[2px] flex-1 bg-blue-100" />
+                          )}
+                        </div>
+                        <div
+                          className={cn(
+                            "flex-1",
+                            index < translation.detail_tour.length - 1 ? "pb-5" : "pb-0"
+                          )}>
+                          <p className="text-sm leading-relaxed text-gray-600">{item}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sidebar / Booking Card - Desktop Only */}

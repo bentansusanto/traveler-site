@@ -221,7 +221,7 @@ const TravelerEditModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90vh] max-w-2xl flex-col overflow-hidden p-0">
-        <DialogHeader className="flex-shrink-0 border-b p-6">
+        <DialogHeader className="shrink-0 border-b p-6">
           <DialogTitle className="text-xl font-bold">Traveler</DialogTitle>
         </DialogHeader>
 
@@ -374,7 +374,7 @@ const TravelerEditModal = ({
           </Button>
         </div>
 
-        <div className="flex-shrink-0 border-t bg-white p-6 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+        <div className="shrink-0 border-t bg-white p-6 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
           <Button
             className="w-full bg-blue-600 py-6 text-base font-semibold text-white hover:bg-blue-700"
             onClick={() => formik.handleSubmit()}

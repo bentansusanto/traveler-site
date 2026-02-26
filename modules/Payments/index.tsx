@@ -28,8 +28,8 @@ const SummaryTourItem = ({ item, locale }: { item: any; locale: string }) => {
   return (
     <div className="flex items-start gap-3 text-sm">
       <div className="mt-1 flex flex-col items-center gap-1">
-        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500"></span>
-        <div className="h-full min-h-[1.5rem] w-px bg-gray-200"></div>
+        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500"></span>
+        <div className="h-full min-h-6 w-px bg-gray-200"></div>
       </div>
       <div>
         <p className="font-medium text-gray-900">{destinationName}</p>
@@ -307,7 +307,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                         <div
                           key={t.id || idx}
                           className="flex items-center gap-3 text-sm text-gray-700">
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-400">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-400">
                             <Icon name="User" className="h-4 w-4" />
                           </div>
                           <span className="font-medium">

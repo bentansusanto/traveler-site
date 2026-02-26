@@ -248,11 +248,11 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
                     }}
                     className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-gray-50">
                     {item.type === "location" ? (
-                      <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
                         <Icon name="MapPin" className="size-5 text-gray-600" />
                       </div>
                     ) : (
-                      <div className="relative size-10 flex-shrink-0 overflow-hidden rounded-lg">
+                      <div className="relative size-10 shrink-0 overflow-hidden rounded-lg">
                         <Image
                           src={item.thumbnail || "/images/placeholder.jpg"}
                           alt={item.translatedName || item.name}
