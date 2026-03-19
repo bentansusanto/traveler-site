@@ -33,7 +33,7 @@ import {
   useGetAllTourQuery,
   useUpdateStatusTourMutation
 } from "@/store/services/book-tour.service";
-import { useUpdateStatusMotorMutation, useFindBookMotorByIdQuery } from "@/store/services/book-motor.service";
+import { useUpdateStatusMotorMutation, useFindBookMotorByIdQuery, useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useCancelPaymentMutation, useFindAllPaymentQuery } from "@/store/services/payment.service";
 import {
@@ -1276,7 +1276,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
         {allBookings.map((booking: any) => {
           const isMotor = booking.type === 'motor';
           const firstItem = isMotor ? booking.items?.[0] : booking.book_tour_items?.[0];
-          const translation = isMotor 
+          const translation = isMotor
             ? { name: firstItem?.motor_name }
             : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);
 
@@ -1316,17 +1316,17 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
               ? data
               : [];
 
-          const bookingTourists = isMotor 
+          const bookingTourists = isMotor
             ? (booking.tourists || [])
             : touristList.filter((t: any) => t.book_tour_id === booking.id);
 
           const touristCount = bookingTourists.length;
           const subtotalValue =
             typeof booking.subtotal === "string" ? parseFloat(booking.subtotal) : booking.subtotal;
-          const totalPrice = isMotor 
-            ? (typeof booking.total_price === "string" ? parseFloat(booking.total_price) : booking.total_price) 
+          const totalPrice = isMotor
+            ? (typeof booking.total_price === "string" ? parseFloat(booking.total_price) : booking.total_price)
             : (touristCount > 0 ? subtotalValue * touristCount : subtotalValue);
-          
+
           const displayDate = isMotor ? booking.start_date : firstItem?.visit_date;
 
           return (
