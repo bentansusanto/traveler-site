@@ -29,6 +29,8 @@ import {
   useGetAllTourQuery,
   useUpdateStatusTourMutation
 } from "@/store/services/book-tour.service";
+import { useUpdateStatusMotorMutation } from "@/store/services/book-motor.service";
+import { useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import {
   useCreateTouristMutation,
   useDeleteTouristMutation,
@@ -414,34 +416,45 @@ export const MyBookingPageMobile = () => {
     refetch: refetchBookings
   } = useGetAllTourQuery(undefined);
   const {
+    data: motorBookingsData,
+    isLoading: isLoadingMotorBookings,
+    refetch: refetchMotorBookings
+  } = useFindAllBookMotorsQuery(undefined);
+  const {
     data: touristsData,
     isLoading: isLoadingTourists,
     refetch: refetchTourists
   } = useFindAllTouristQuery();
   const [updateStatusTour, { isLoading: isUpdatingStatus }] = useUpdateStatusTourMutation();
-
+  const [updateStatusMotor, { isLoading: isUpdatingMotorStatus }] = useUpdateStatusMotorMutation();
   const [activeFilter, setActiveFilter] = useState("All");
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [dataDetail, setDataDetail] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
   const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
+  const [bookingToCancelType, setBookingToCancelType] = useState<string | null>(null);
 
-  const filters = ["All", "Tour Holiday & Religion", "Flight", "Hotels"];
+  const filters = ["All", "Tour Holiday & Religion", "Flight", "Hotels", "Motorcycle"];
 
-  const isLoading = isLoadingBookings || isLoadingTourists;
+  const isLoading = isLoadingBookings || isLoadingTourists || isLoadingMotorBookings;
 
-  // Filter logic (currently showing all for categories other than All until API supports type)
-  const filteredBookings =
-    bookingsData?.data?.filter((booking: any) => {
+  // Normalize Tour book data
+  const normalizedTourBookings = (bookingsData?.data || bookingsData?.datas || []).map((b: any) => ({...b, type: 'tour'}));
+  
+  // Normalize Motor book data
+  const normalizedMotorBookings = (motorBookingsData?.data || motorBookingsData?.datas || []).map((b: any) => ({...b, type: 'motor'}));
+
+  const allBookings = [...normalizedTourBookings, ...normalizedMotorBookings].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Filter logic
+  const filteredBookings = allBookings.filter((booking: any) => {
       if (activeFilter === "All") return true;
-      // NOTE: Assuming bookingsData currently doesn't have explicit type field
-      // For now, "Tour Holiday & Religion" shows all since that's what we have
-      if (activeFilter === "Tour Holiday & Religion") return true;
+      if (activeFilter === "Tour Holiday & Religion" && booking.type === "tour") return true;
+      if (activeFilter === "Motorcycle" && booking.type === "motor") return true;
       return false;
-    }) || [];
+  });
 
   const handleOpenEditModal = (booking: any) => {
     setEditingBooking(booking);
@@ -453,27 +466,38 @@ export const MyBookingPageMobile = () => {
     setIsDetailModalOpen(true);
   };
 
-  const handleCancelTour = (bookingId: string) => {
+  const handleCancelTour = (bookingId: string, type: string) => {
     setBookingToCancelId(bookingId);
+    setBookingToCancelType(type);
     setIsCancelAlertOpen(true);
   };
 
   const onConfirmCancel = async () => {
-    if (!bookingToCancelId) return;
+    if (!bookingToCancelId || !bookingToCancelType) return;
 
     try {
-      await updateStatusTour({
-        id: bookingToCancelId,
-        data: { status: "cancelled" }
-      }).unwrap();
-      toast.success("Tour has been canceled successfully");
+      if (bookingToCancelType === 'motor') {
+        await updateStatusMotor({
+          id: bookingToCancelId,
+          status: "cancelled"
+        }).unwrap();
+        toast.success("Motor rental has been canceled successfully");
+      } else {
+        await updateStatusTour({
+          id: bookingToCancelId,
+          data: { status: "cancelled" }
+        }).unwrap();
+        toast.success("Tour has been canceled successfully");
+      }
       refetchBookings();
+      refetchMotorBookings();
     } catch (error) {
-      console.error("Failed to cancel tour:", error);
-      toast.error("Failed to cancel tour");
+      console.error("Failed to cancel booking:", error);
+      toast.error("Failed to cancel booking");
     } finally {
       setIsCancelAlertOpen(false);
       setBookingToCancelId(null);
+      setBookingToCancelType(null);
     }
   };
 
@@ -481,7 +505,8 @@ export const MyBookingPageMobile = () => {
     { id: "all", label: "All" },
     { id: "tour", label: "Tour Holiday & Religion" },
     { id: "flight", label: "Flight" },
-    { id: "hotel", label: "Hotels" }
+    { id: "hotel", label: "Hotels" },
+    { id: "motor", label: "Motorcycle"}
   ];
 
   return (
@@ -529,11 +554,11 @@ export const MyBookingPageMobile = () => {
         ) : (
           // Booking Cards
           filteredBookings.map((booking: any) => {
-            const firstItem = booking.book_tour_items?.[0];
-            const translation =
-              firstItem?.destination?.translations?.find(
-                (tr: any) => tr.language_code === locale
-              ) || firstItem?.destination?.translations?.[0];
+            const isMotor = booking.type === 'motor';
+            const firstItem = isMotor ? booking.items?.[0] : booking.book_tour_items?.[0];
+            const translation = isMotor 
+              ? { name: firstItem?.motor_name }
+              : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);
 
             const formatSubtotal = (amount: string | number) => {
               const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -549,6 +574,7 @@ export const MyBookingPageMobile = () => {
               const statusConfig = {
                 draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
                 pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
+                confirmed: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
                 ongoing: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
                 completed: { label: "Completed", color: "bg-green-100 text-green-700" },
                 cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" }
@@ -564,13 +590,19 @@ export const MyBookingPageMobile = () => {
               : Array.isArray(data)
                 ? data
                 : [];
-            const bookingTourists = touristList.filter((t: any) => t.book_tour_id === booking.id);
+            const bookingTourists = isMotor 
+              ? (booking.tourists || [])
+              : touristList.filter((t: any) => t.book_tour_id === booking.id);
             const touristCount = bookingTourists.length;
             const subtotalValue =
               typeof booking.subtotal === "string"
                 ? parseFloat(booking.subtotal)
                 : booking.subtotal;
-            const totalPrice = touristCount > 0 ? subtotalValue * touristCount : subtotalValue;
+            const totalPrice = isMotor 
+              ? (typeof booking.total_price === "string" ? parseFloat(booking.total_price) : booking.total_price) 
+              : (touristCount > 0 ? subtotalValue * touristCount : subtotalValue);
+            
+            const displayDate = isMotor ? booking.start_date : firstItem?.visit_date;
 
             return (
               <div
@@ -604,11 +636,11 @@ export const MyBookingPageMobile = () => {
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 shrink-0 text-gray-400">📅</div>
                     <span>
-                      {new Date(firstItem?.visit_date).toLocaleDateString("id-ID", {
+                      {displayDate ? new Date(displayDate).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "long",
                         year: "numeric"
-                      })}
+                      }) : "-"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -623,7 +655,7 @@ export const MyBookingPageMobile = () => {
                     <span className="text-lg font-bold text-blue-600">
                       {formatSubtotal(totalPrice)}
                     </span>
-                    {touristCount > 0 && (
+                    {!isMotor && touristCount > 0 && (
                       <span className="text-xs text-gray-400">
                         {formatSubtotal(subtotalValue)} × {touristCount} orang
                       </span>
@@ -631,17 +663,15 @@ export const MyBookingPageMobile = () => {
                   </div>
 
                   <div className="grid gap-2">
-                    {!["ongoing", "completed", "pending", "cancelled"].includes(
-                      booking.status.toLowerCase()
-                    ) && (
+                    {["pending", "draft"].includes(booking.status.toLowerCase()) && (
                       <>
                         {touristCount === 0 ? (
                           <>
                             <Button
                               variant="destructive"
                               className="w-full bg-red-50 text-red-600 hover:bg-red-100"
-                              onClick={() => handleCancelTour(booking.id)}>
-                              {isUpdatingStatus ? "Cancelling..." : "Cancel Tour"}
+                              onClick={() => handleCancelTour(booking.id, booking.type)}>
+                              {isUpdatingStatus || isUpdatingMotorStatus ? "..." : "Cancel"}
                             </Button>
                             <Button
                               variant="outline"
@@ -655,8 +685,8 @@ export const MyBookingPageMobile = () => {
                             <Button
                               variant="outline"
                               className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => handleCancelTour(booking.id)}>
-                              {isUpdatingStatus ? "Cancelling..." : "Cancel Tour"}
+                              onClick={() => handleCancelTour(booking.id, booking.type)}>
+                              {isUpdatingStatus || isUpdatingMotorStatus ? "..." : "Cancel"}
                             </Button>
                             <Link
                               href={`/${locale}/payments?order_id=${booking.id}`}

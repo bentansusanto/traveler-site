@@ -2,7 +2,7 @@ import { useCreateTourMutation, useGetAllTourQuery } from "@/store/services/book
 import { useFindDestinationBySlugQuery } from "@/store/services/destination.service";
 import { setHasNewBooking } from "@/store/slices/uiSlice";
 import { useLocale, useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ export const useDestinationDetailsLogic = () => {
   const t = useTranslations("Common");
   const currentCurrency = useSelector((state: any) => state.currency);
   const isLoggedIn = useSelector((state: any) => state.auth?.isLoggedIn || false);
+  const router = useRouter();
 
   const { data: response, isLoading } = useFindDestinationBySlugQuery(slug, {
     skip: !slug
@@ -44,6 +45,12 @@ export const useDestinationDetailsLogic = () => {
   });
 
   const handleBooking = async () => {
+    if (!isLoggedIn) {
+      toast.error("Silakan login terlebih dahulu untuk melanjutkan booking.");
+      router.push(`/${locale}/login`);
+      return;
+    }
+
     if (!selectedDate) {
       toast.error("Silakan pilih tanggal terlebih dahulu");
       return;

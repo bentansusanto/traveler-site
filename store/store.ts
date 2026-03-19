@@ -11,6 +11,8 @@ import { touristService } from "./services/tourist.service";
 import { paymentService } from "./services/payment.service";
 import { profileService } from "./services/profile.service";
 import { rolesService } from "./services/role.service";
+import { motorService } from "./services/motor.service";
+import { bookMotorService } from "./services/book-motor.service";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +24,8 @@ export const store = configureStore({
     [paymentService.reducerPath]: paymentService.reducer,
     [profileService.reducerPath]: profileService.reducer,
     [rolesService.reducerPath]: rolesService.reducer,
+    [motorService.reducerPath]: motorService.reducer,
+    [bookMotorService.reducerPath]: bookMotorService.reducer,
     auth: authReducer,
     currency: currencyReducer,
     ui: uiReducer
@@ -35,7 +39,9 @@ export const store = configureStore({
       touristService.middleware,
       paymentService.middleware,
       profileService.middleware,
-      rolesService.middleware
+      rolesService.middleware,
+      motorService.middleware,
+      bookMotorService.middleware
     )
 });
 

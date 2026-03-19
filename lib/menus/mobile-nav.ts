@@ -31,7 +31,7 @@ export const NavMenu = [
   },
   {
     page: "Motorcycle",
-    href: "/motorcycle",
+    href: "/motor-bike",
     icon: "Bike"
   },
   {

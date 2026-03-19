@@ -16,6 +16,7 @@ export function PaymentSuccessContent() {
   const [capturePayment, { isLoading }] = useCapturePaymentMutation();
   const [status, setStatus] = useState<"capturing" | "success" | "error">("capturing");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [successData, setSuccessData] = useState<any>(null);
 
   useEffect(() => {
     if (token) {
@@ -33,12 +34,8 @@ export function PaymentSuccessContent() {
 
     try {
       const result = await capturePayment(token).unwrap();
+      setSuccessData(result.data);
       setStatus("success");
-
-      // Redirect to bookings after 3 seconds
-      setTimeout(() => {
-        router.push(`/${locale}/my-bookings`);
-      }, 3000);
     } catch (error: any) {
       console.error("Payment capture error:", error);
       setStatus("error");
@@ -82,24 +79,51 @@ export function PaymentSuccessContent() {
         )}
 
         {status === "success" && (
-          <div className="rounded-xl border border-green-200 bg-white p-8 text-center shadow-sm">
-            <div className="mb-6 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <Icon name="Check" className="h-10 w-10 z-20 text-green-600" />
+          <div className="rounded-xl border border-green-200 bg-white p-8 shadow-sm">
+            <div className="mb-6 text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                  <Icon name="Check" className="h-10 w-10 z-20 text-green-600" />
+                </div>
               </div>
-            </div>
-            <h2 className="mb-2 text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
-            <p className="mb-6 text-gray-600">
-              Terima kasih! Pembayaran Anda telah berhasil diproses.
-            </p>
-            <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-              <p className="text-sm text-blue-700">
-                Anda akan diarahkan ke halaman pesanan dalam beberapa detik...
+              <h2 className="mb-2 text-xl font-bold text-gray-900">Pembayaran Berhasil!</h2>
+              <p className="text-gray-600">
+                Terima kasih! Pembayaran Anda telah berhasil diproses.
               </p>
             </div>
+
+            {successData && (
+              <div className="mb-6 space-y-4 rounded-lg bg-gray-50 p-6 border border-gray-100">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Nomor Invoice</span>
+                  <span className="font-bold text-gray-900">{successData.invoice_code}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Metode Pembayaran</span>
+                  <span className="font-medium text-gray-900 uppercase">{successData.payment_method}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Tipe Layanan</span>
+                  <span className="font-medium text-gray-900">
+                    {successData.service_type === 'tour' ? 'Paket Tour' : 'Sewa Motor'}
+                  </span>
+                </div>
+                <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
+                  <span className="text-base font-bold text-gray-900">Total Pembayaran</span>
+                  <span className="text-lg font-bold text-blue-600">
+                    {new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: successData.currency || "IDR",
+                      minimumFractionDigits: 0
+                    }).format(successData.amount)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <Button
               onClick={() => router.push(`/${locale}/my-bookings`)}
-              className="mt-6 w-full rounded-xl bg-blue-500 font-bold text-white hover:bg-blue-600">
+              className="w-full rounded-xl bg-blue-500 py-6 font-bold text-white hover:bg-blue-600 shadow-md transition-all active:scale-95">
               Lihat Pesanan Saya
             </Button>
           </div>

@@ -76,15 +76,16 @@ const socialMedia = [
 export const Footer = () => {
   const date = new Date().getFullYear();
   return (
-    <div className="mt-3 md:mt-10 bg-white md:bg-transparent border-t-2 pb-12 md:pb-0 border-dashed md:border-t-0 border-gray-200 py-10 px-5 md:px-8 lg:mx-auto lg:max-w-5xl lg:px-0 xl:max-w-[80%]">
+    <div className="mt-3 border-t-2 border-dashed border-gray-200 bg-white px-5 py-10 pb-12 md:mt-10 md:border-t-0 md:bg-transparent md:px-8 md:pb-0 lg:mx-auto lg:max-w-5xl lg:px-0 xl:max-w-[80%]">
       <div className="flex flex-col items-start space-y-10 space-x-0 md:flex-row md:space-y-0 md:space-x-20">
         <div className="space-y-5 lg:max-w-sm">
           <div>
             <Image
               src="/images/logo-pacific-travelindo.svg"
-              width={80}
-              height={80}
+              width={100}
+              height={100}
               alt="logo-travelindo"
+              className="w-20 h-20 md:w-24 md:h-24"
             />
           </div>
           <div className="max-w-auto space-y-3 md:max-w-xs">

@@ -4,11 +4,11 @@ import Icon from "@/components/icon";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import Link from "next/link";
-import { useDestinationPageLogic } from "./logic";
+import { useMotorBikePageLogic } from "./logic";
 import { SearchDrawer } from "./SearchDrawer";
 import { SearchModal } from "./SearchModal";
 
-export const DestinationPage = () => {
+export const MotorBikePage = () => {
   const {
     locale,
     activePromoFilter,
@@ -24,47 +24,59 @@ export const DestinationPage = () => {
     categories,
     isLoading,
     formatPrice,
-    filteredDestinations
-  } = useDestinationPageLogic();
+    filteredMotors
+  } = useMotorBikePageLogic();
 
-  const renderDestinationCard = (item: any, idx: number) => {
+  const renderMotorCard = (item: any, idx: number) => {
     const translation =
       item.translations?.find((t: any) => t.language_code === locale) || item.translations?.[0];
-    const name = translation?.name || "Unknown Destination";
-    const image = translation?.thumbnail || "/images/placeholder.jpg";
-    const rawPrice = parseFloat(item.price) || 0;
+    const name = translation?.name_motor || "Unknown Motor";
+    const image = item.thumbnail || "/images/placeholder.jpg";
+
+    // Fallbacks for pricing based either on motor_prices or prices array
+    const prices = item.motor_prices || item.prices || [];
+    const dailyPriceObj = prices.find((p: any) => p.price_type === 'daily');
+    const rawPrice = dailyPriceObj ? parseFloat(dailyPriceObj.price) : 0;
 
     return (
       <Link
-        href={`/${locale}/tour-holiday-religion/${translation?.slug || item.id}`}
+        href={`/${locale}/motor-bike/${item.id}`}
         key={item.id || idx}
         className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition-all hover:shadow-md">
         {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
           <Image
             src={image}
             alt={name}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
+            }}
           />
+          {!item.is_available && (
+            <div className="absolute top-2 left-2 rounded-md bg-gray-800/80 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+              Unavailable
+            </div>
+          )}
         </div>
 
         {/* Info */}
         <div className="flex flex-1 flex-col p-4">
           <h3 className="line-clamp-2 text-sm font-bold text-gray-900 md:text-base">{name}</h3>
           <p className="mt-1 flex items-center gap-1 text-[10px] text-gray-500 md:text-xs">
-            {item.location}
+            {item.state?.name || "Unknown Location"} {item.engine_cc ? `• ${item.engine_cc}cc` : ""}
           </p>
 
           <div className="mt-2 flex items-center gap-1">
             <Icon name="Star" className="size-3 fill-orange-400 text-orange-400" />
-            <span className="text-[10px] font-bold text-gray-700 md:text-xs">4.4</span>
-            <span className="text-[10px] text-gray-400 md:text-xs">/5 (25.3rb Review)</span>
+            <span className="text-[10px] font-bold text-gray-700 md:text-xs">4.8</span>
+            <span className="text-[10px] text-gray-400 md:text-xs">/5 (10.2rb Review)</span>
           </div>
 
           <div className="mt-auto pt-4">
             <p className="text-[10px] text-gray-400 line-through md:text-xs">
-              {formatPrice(rawPrice)}
+              {formatPrice(rawPrice * 1.5)}
             </p>
             <p className="text-sm font-bold text-red-600 md:text-lg">{formatPrice(rawPrice)}</p>
           </div>
@@ -76,12 +88,12 @@ export const DestinationPage = () => {
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Hero Section */}
-      <div className="relative h-[300px] w-full overflow-hidden md:h-[480px]">
+      <div className="relative h-[300px] w-full overflow-hidden md:h-[480px] bg-gradient-to-br from-slate-800 via-blue-950 to-slate-900">
         <Image
-          src="/images/hero_things_todo_mobile.png"
-          alt="Things To-Do Hero"
+          src="https://www.pelago.com/img/products/ID-Indonesia/scooter-motorbike-rental-delivery/0419-0319_scooter-motorbike-rental-delivery-indonesia-pelago0.jpg"
+          alt="Rent a Motorcycle Hero"
           fill
-          className="object-cover"
+          className="object-cover opacity-50"
           priority
         />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -98,7 +110,7 @@ export const DestinationPage = () => {
             <Icon name="Search" className="absolute left-4 z-10 size-5 text-gray-400" />
             <Input
               type="text"
-              placeholder="Cari lokasi atau destinasi"
+              placeholder="Cari lokasi atau nama motor"
               readOnly
               onClick={() => setIsDrawerOpen(true)}
               className="h-10 w-full cursor-pointer rounded-2xl bg-white/95 pr-4 pl-12 text-sm font-medium text-gray-600 shadow-lg backdrop-blur-sm transition-all outline-none focus:bg-white"
@@ -112,10 +124,10 @@ export const DestinationPage = () => {
           <div className="hidden w-full max-w-4xl flex-col items-center text-center md:flex">
             <div className="flex items-center gap-6">
               <h1 className="text-4xl font-black tracking-tight text-white lg:text-5xl">
-                Things To-Do
+                Rent Motorcycle
               </h1>
               <button className="flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-6 py-2.5 text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-white/30 active:scale-95">
-                Lihat semua aktivitas terdekat
+                Lihat motor terdekat
                 <Icon name="ChevronRight" className="size-3.5" />
               </button>
             </div>
@@ -131,7 +143,7 @@ export const DestinationPage = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Cari aktivitas atau destinasi"
+                  placeholder="Cari motor atau lokasi"
                   readOnly
                   className="h-16 w-full cursor-pointer rounded-2xl bg-white/95 pr-8 pl-16 text-lg font-medium text-gray-800 shadow-2xl backdrop-blur-sm transition-all outline-none focus:bg-white"
                 />
@@ -142,10 +154,10 @@ export const DestinationPage = () => {
           {/* Mobile Bottom-Left Content */}
           <div className="absolute bottom-10 left-5 flex flex-col items-start md:hidden">
             <h1 className="text-2xl font-black tracking-tight text-white">
-              Tour Holiday & Religion
+              Rent Motorcycle
             </h1>
             <button className="mt-3 flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[10px] font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95">
-              Lihat semua aktivitas terdekat
+              Lihat motor terdekat
               <Icon name="ChevronRight" className="size-3" />
             </button>
           </div>
@@ -154,11 +166,11 @@ export const DestinationPage = () => {
 
       <div className="relative -mt-4 rounded-t-3xl bg-white p-5 md:mx-auto md:max-w-7xl md:px-8">
         {/* Category Icons Grid */}
-        <div className="grid grid-cols-5 gap-x-2 gap-y-8 md:grid-cols-10">
+        <div className="flex overflow-x-auto pb-4 gap-4 md:flex-wrap md:justify-start md:overflow-visible no-scrollbar">
           {categories.map((cat, i) => (
             <div
               key={i}
-              className="flex cursor-pointer flex-col items-center gap-2"
+              className="flex cursor-pointer flex-col items-center gap-2 min-w-[70px]"
               onClick={() => setActiveCategory(cat.name)}>
               <div className="relative">
                 <div
@@ -183,18 +195,18 @@ export const DestinationPage = () => {
         </div>
 
         {/* Promo Header */}
-        <div className="mt-12">
+        <div className="mt-8 md:mt-12">
           <h2 className="text-lg font-black text-gray-900 md:text-2xl">
-            Semua Promo To Do buat Liburanmu
+            Semua Motor Pilihan buat Jalan-jalan
           </h2>
-          <div className="mt-1 flex items-center justify-between">
+          <div className="mt-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <p className="text-xs font-medium text-gray-500 md:text-sm">
-              Makin hemat wujudin liburan impian dengan promo menarik. 🤑
+              Sewa motor dengan harga terjangkau dan kualitas terjamin. 🏍️
             </p>
             {locationFilter && (
               <button
                 onClick={() => setLocationFilter(null)}
-                className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 transition-all hover:bg-blue-100">
+                className="flex items-center gap-2 rounded-lg bg-blue-50 w-max px-3 py-1.5 text-xs font-bold text-blue-600 transition-all hover:bg-blue-100 self-start md:self-auto">
                 <Icon name="MapPin" className="size-3.5" />
                 Lokasi: {locationFilter}
                 <Icon name="X" className="ml-1 size-3.5" />
@@ -227,11 +239,11 @@ export const DestinationPage = () => {
             </div>
           ) : (
             (() => {
-              if (filteredDestinations.length > 0) {
+              if (filteredMotors.length > 0) {
                 return (
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:gap-8">
-                    {filteredDestinations.map((item: any, idx: number) =>
-                      renderDestinationCard(item, idx)
+                    {filteredMotors.map((item: any, idx: number) =>
+                      renderMotorCard(item, idx)
                     )}
                   </div>
                 );
@@ -241,8 +253,8 @@ export const DestinationPage = () => {
                 <div className="flex h-64 flex-col items-center justify-center rounded-3xl bg-gray-50 text-center">
                   <Icon name="SearchX" className="size-16 text-gray-300" />
                   <p className="mt-4 text-sm font-medium text-gray-500">
-                    Opps! Tidak ada destinasi{" "}
-                    {activeCategory !== "Semua Kategori" ? `di kategori "${activeCategory}"` : ""}{" "}
+                    Opps! Tidak ada motor{" "}
+                    {activeCategory !== "Semua Merek" ? `di merek "${activeCategory}"` : ""}{" "}
                     ditemukan.
                   </p>
                 </div>

@@ -141,6 +141,16 @@ export const BookTourDetail = ({
 
   if (!data) return null;
 
+  const isMotor = data.type === 'motor';
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount || 0);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
@@ -170,60 +180,129 @@ export const BookTourDetail = ({
                   {data.status}
                 </span>
               </div>
-              {data.country && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Negara:</span>
-                  <span className="font-medium">{data.country.name}</span>
-                </div>
+
+              {isMotor ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Mulai Sewa:</span>
+                    <span className="font-medium">
+                      {data.start_date
+                        ? new Date(data.start_date).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric"
+                          })
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Selesai Sewa:</span>
+                    <span className="font-medium">
+                      {data.end_date
+                        ? new Date(data.end_date).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric"
+                          })
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-100 pt-2">
+                    <span className="font-semibold text-gray-900">Total Harga:</span>
+                    <span className="font-bold text-blue-600">
+                      {formatCurrency(Number(data.total_price))}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {data.country && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Negara:</span>
+                      <span className="font-medium">{data.country.name}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-gray-100 pt-2">
+                    <span className="font-semibold text-gray-900">Total Subtotal:</span>
+                    <span className="font-bold text-blue-600">
+                      {formatCurrency(parseFloat(data.subtotal))}
+                    </span>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between border-t border-gray-100 pt-2">
-                <span className="font-semibold text-gray-900">Total Subtotal:</span>
-                <span className="font-bold text-blue-600">
-                  {new Intl.NumberFormat("id-ID", {
-                    style: "currency",
-                    currency: "IDR",
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                  }).format(parseFloat(data.subtotal))}
-                </span>
-              </div>
             </div>
           </div>
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-6">
-          {/* Tour Itinerary Detail */}
-          <div className="rounded-xl border border-gray-100 p-4">
-            <h3 className="mb-4 text-sm font-bold text-gray-900">
-              Detail Itinerary ({data.book_tour_items?.length || 0} Destinasi)
-            </h3>
-            <div className="space-y-0">
-              {(() => {
-                // Sort items by visit_date chronologically
-                const items = data.book_tour_items || [];
-                const sortedItems = [...items].sort((a: any, b: any) => {
-                  const dateA = new Date(a.visit_date).getTime();
-                  const dateB = new Date(b.visit_date).getTime();
-                  if (dateA !== dateB) return dateA - dateB;
-                  // Stable secondary sort using created_at
-                  const seqA = new Date(a.created_at || 0).getTime();
-                  const seqB = new Date(b.created_at || 0).getTime();
-                  return seqA - seqB;
-                });
+          {isMotor ? (
+            /* Motor Rental Detail */
+            <div className="rounded-xl border border-gray-100 p-4">
+              <h3 className="mb-4 text-sm font-bold text-gray-900">
+                Detail Motor ({data.book_motor_items?.length || 0} Unit)
+              </h3>
+              <div className="space-y-3">
+                {(data.book_motor_items || []).map((item: any, index: number) => (
+                  <div
+                    key={item.id || index}
+                    className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    <div className="mb-1 font-medium text-gray-900">{item.motor_name}</div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>Qty: {item.qty}</span>
+                      <span>{formatCurrency(Number(item.subtotal))}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                return sortedItems.map((item: any, index: number) => (
-                  <TourItemDetail
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    locale={locale}
-                    dayNumber={index + 1}
-                    dayRange={undefined}
-                  />
-                ));
-              })()}
+              {/* Tourists */}
+              {(data.tourists || []).length > 0 && (
+                <div className="mt-5">
+                  <h4 className="mb-3 text-sm font-bold text-gray-900">Data Penyewa</h4>
+                  <div className="space-y-2">
+                    {(data.tourists || []).map((t: any, i: number) => (
+                      <div key={t.id || i} className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
+                        <div className="font-medium text-gray-900">{t.name}</div>
+                        <div className="text-gray-500">No. Paspor: {t.passport_number}</div>
+                        <div className="text-gray-500">Telp: {t.phone_number}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            /* Tour Itinerary Detail */
+            <div className="rounded-xl border border-gray-100 p-4">
+              <h3 className="mb-4 text-sm font-bold text-gray-900">
+                Detail Itinerary ({data.book_tour_items?.length || 0} Destinasi)
+              </h3>
+              <div className="space-y-0">
+                {(() => {
+                  const items = data.book_tour_items || [];
+                  const sortedItems = [...items].sort((a: any, b: any) => {
+                    const dateA = new Date(a.visit_date).getTime();
+                    const dateB = new Date(b.visit_date).getTime();
+                    if (dateA !== dateB) return dateA - dateB;
+                    const seqA = new Date(a.created_at || 0).getTime();
+                    const seqB = new Date(b.created_at || 0).getTime();
+                    return seqA - seqB;
+                  });
+
+                  return sortedItems.map((item: any, index: number) => (
+                    <TourItemDetail
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      locale={locale}
+                      dayNumber={index + 1}
+                      dayRange={undefined}
+                    />
+                  ));
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

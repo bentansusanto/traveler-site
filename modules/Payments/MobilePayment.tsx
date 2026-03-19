@@ -4,6 +4,7 @@ import Icon from "@/components/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useGetAllTourQuery } from "@/store/services/book-tour.service";
+import { useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useCreatePaymentMutation } from "@/store/services/payment.service";
 import { useFindAllTouristQuery } from "@/store/services/tourist.service";
@@ -94,13 +95,24 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
   const locale = useLocale();
   const router = useRouter();
 
-  const { data: bookingsData, isLoading: isLoadingBooking } = useGetAllTourQuery(undefined);
+  const { data: tourBookingsData, isLoading: isLoadingTourBooking } = useGetAllTourQuery(undefined);
+  const { data: motorBookingsData, isLoading: isLoadingMotorBooking } = useFindAllBookMotorsQuery();
   const { data: touristsData, isLoading: isLoadingTourists } = useFindAllTouristQuery();
 
   const booking = useMemo(() => {
-    const bookings = bookingsData?.datas || bookingsData?.data || [];
-    return bookings.find((b: any) => b.id === orderId);
-  }, [bookingsData, orderId]);
+    const tourBookings = tourBookingsData?.datas || tourBookingsData?.data || [];
+    const motorBookings = motorBookingsData?.datas || motorBookingsData?.data || [];
+    
+    const tourBooking = tourBookings.find((b: any) => b.id === orderId);
+    if (tourBooking) return { ...tourBooking, type: 'tour' };
+    
+    const motorBooking = motorBookings.find((b: any) => b.id === orderId);
+    if (motorBooking) return { ...motorBooking, type: 'motor' };
+    
+    return null;
+  }, [tourBookingsData, motorBookingsData, orderId]);
+
+  const isMotor = booking?.type === 'motor';
 
   const tourists = useMemo(() => {
     const data = touristsData?.data || touristsData?.datas;
@@ -109,14 +121,19 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
       : Array.isArray(data)
         ? data
         : [];
+    
+    if (isMotor) {
+        return booking?.tourists || touristList.filter((t: any) => t.book_motor_id === orderId);
+    }
     return touristList.filter((t: any) => t.book_tour_id === orderId);
-  }, [touristsData, orderId]);
+  }, [touristsData, orderId, booking, isMotor]);
 
   const totalPrice = useMemo(() => {
+    if (isMotor) return parseFloat(booking?.total_price || "0");
     const subtotal = parseFloat(booking?.subtotal || "0");
     const count = tourists.length || 0;
     return subtotal * count;
-  }, [booking, tourists]);
+  }, [booking, tourists, isMotor]);
 
   const [showItinerary, setShowItinerary] = useState(false);
   const [showTravelers, setShowTravelers] = useState(false);
@@ -141,12 +158,19 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
     setPaymentError(null);
 
     try {
-      const result = await createPayment({
-        book_tour_id: orderId,
+      const paymentData: any = {
         payment_method: "paypal",
         currency: "IDR",
         exchange_rate: idrToUsdRate
-      }).unwrap();
+      };
+
+      if (isMotor) {
+        paymentData.book_motor_id = orderId;
+      } else {
+        paymentData.book_tour_id = orderId;
+      }
+
+      const result = await createPayment(paymentData).unwrap();
 
       if (result.data?.redirect_url) {
         window.location.href = result.data.redirect_url;
@@ -170,7 +194,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
     }).format(amount);
   };
 
-  if (isLoadingBooking || isLoadingTourists) {
+  if (isLoadingTourBooking || isLoadingMotorBooking || isLoadingTourists) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
@@ -206,65 +230,91 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
 
       {/* Content */}
       <div className="space-y-4 p-4">
-        {/* Tour Summary Card */}
+        {/* Tour/Motor Summary Card */}
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="flex gap-3">
-            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
-              {translation?.thumbnail && (
-                <Image
-                  width={100}
-                  height={100}
-                  src={translation.thumbnail}
-                  alt={translation?.name}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-            <div className="flex-1">
-              <h3 className="mb-2 font-bold text-gray-900">{translation?.name || "Tour"}</h3>
-              <div className="space-y-1 text-xs text-gray-500">
-                <div className="flex items-center gap-1">
-                  <Icon name="MapPin" className="h-3.5 w-3.5" />
-                  <span>{firstItem?.destination?.location || "Location"}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Icon name="Calendar" className="h-3.5 w-3.5" />
-                  <span>
-                    {new Date(firstItem?.visit_date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long"
-                    })}
-                  </span>
-                </div>
+          {isMotor ? (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-gray-900">Rental Motor</h3>
+                <span className="text-xs text-blue-600 font-medium">#{booking.id}</span>
+              </div>
+              <div className="space-y-2">
+                {(booking.items || []).map((item: any) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{item.motor_name}</span>
+                    <span className="font-medium">{item.qty} unit</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-500">
+                <Icon name="Calendar" className="h-3.5 w-3.5" />
+                <span>
+                   {new Date(booking.start_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long' })} - 
+                   {new Date(booking.end_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Itinerary Section (Collapsible) */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <button
-            onClick={() => setShowItinerary(!showItinerary)}
-            className="flex w-full items-center justify-between p-4">
-            <h3 className="font-bold text-gray-900">
-              Detail Itinerary ({booking.book_tour_items?.length || 0} Destinasi)
-            </h3>
-            <ChevronDown
-              className={`h-5 w-5 text-gray-400 transition-transform ${
-                showItinerary ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-          {showItinerary && (
-            <div className="border-t p-4">
-              <div className="space-y-0">
-                {booking.book_tour_items?.map((item: any, index: number) => (
-                  <ItineraryItem key={item.id} item={item} locale={locale} index={index} />
-                ))}
+          ) : (
+            <div className="flex gap-3">
+              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
+                {translation?.thumbnail && (
+                  <Image
+                    width={100}
+                    height={100}
+                    src={translation.thumbnail}
+                    alt={translation?.name}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 font-bold text-gray-900">{translation?.name || "Tour"}</h3>
+                <div className="space-y-1 text-xs text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <Icon name="MapPin" className="h-3.5 w-3.5" />
+                    <span>{firstItem?.destination?.location || "Location"}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Icon name="Calendar" className="h-3.5 w-3.5" />
+                    <span>
+                      {new Date(firstItem?.visit_date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long"
+                      })}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Itinerary Section (Collapsible - Only for Tour) */}
+        {!isMotor && (
+          <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+            <button
+              onClick={() => setShowItinerary(!showItinerary)}
+              className="flex w-full items-center justify-between p-4">
+              <h3 className="font-bold text-gray-900">
+                Detail Itinerary ({booking.book_tour_items?.length || 0} Destinasi)
+              </h3>
+              <ChevronDown
+                className={`h-5 w-5 text-gray-400 transition-transform ${
+                  showItinerary ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {showItinerary && (
+              <div className="border-t p-4">
+                <div className="space-y-0">
+                  {booking.book_tour_items?.map((item: any, index: number) => (
+                    <ItineraryItem key={item.id} item={item} locale={locale} index={index} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Travelers Section (Collapsible) */}
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">

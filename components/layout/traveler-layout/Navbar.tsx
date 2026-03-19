@@ -120,15 +120,11 @@ export const Navbar = () => {
           )}>
           <Link href="/">
             <Image
-              src={
-                isScrolled
-                  ? "/images/logo-pacific-travelindo.svg"
-                  : "/images/logo-pacific-travelindo.svg"
-              }
-              width={60}
-              height={60}
+              src={isScrolled ? "/images/logo-pacific-travelindo.svg" : "/images/logo-pacific-travelindo.svg"}
+              width={30}
+              height={30}
               alt="Logo"
-              className="cursor-pointer"
+              className="w-14 h-14 md:w-24 md:h-24 cursor-pointer"
             />
           </Link>
           <div className="flex items-center gap-3">

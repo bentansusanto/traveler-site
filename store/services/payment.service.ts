@@ -30,7 +30,9 @@ export const paymentService = createApi({
           await queryFulfilled;
           // Import bookTourService dynamically to avoid circular dependency
           const { bookTourService } = await import("./book-tour.service");
+          const { bookMotorService } = await import("./book-motor.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
+          dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
         } catch {}
       }
     }),
@@ -45,7 +47,9 @@ export const paymentService = createApi({
         try {
           await queryFulfilled;
           const { bookTourService } = await import("./book-tour.service");
+          const { bookMotorService } = await import("./book-motor.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
+          dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
         } catch {}
       }
     }),
@@ -62,8 +66,9 @@ export const paymentService = createApi({
           await queryFulfilled;
           // Import bookTourService dynamically to avoid circular dependency
           const { bookTourService } = await import("./book-tour.service");
-          // Invalidate BookTours cache to trigger refetch
+          const { bookMotorService } = await import("./book-motor.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
+          dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
         } catch {}
       }
     }),
@@ -79,7 +84,9 @@ export const paymentService = createApi({
         try {
           await queryFulfilled;
           const { bookTourService } = await import("./book-tour.service");
+          const { bookMotorService } = await import("./book-motor.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
+          dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
         } catch {}
       }
     }),

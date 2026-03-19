@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin("./lib/languages/i18n.ts");
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
+  devIndicators: false,
   output: "standalone",
   images: {
     remotePatterns: [

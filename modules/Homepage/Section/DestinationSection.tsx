@@ -139,11 +139,6 @@ export const DestinationSection = () => {
             sizes="(max-width: 768px) 220px, (max-width: 1024px) 50vw, 25vw"
             priority={idx < 2}
           />
-          {idx % 2 === 0 && (
-            <div className="absolute right-0 bottom-0 rounded-tl-xl bg-red-600 px-3 py-1 text-[10px] font-bold text-white">
-              ini BARU murah!
-            </div>
-          )}
         </div>
 
         {/* Info */}

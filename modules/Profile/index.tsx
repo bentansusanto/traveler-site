@@ -33,6 +33,7 @@ import {
   useGetAllTourQuery,
   useUpdateStatusTourMutation
 } from "@/store/services/book-tour.service";
+import { useUpdateStatusMotorMutation, useFindBookMotorByIdQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useCancelPaymentMutation, useFindAllPaymentQuery } from "@/store/services/payment.service";
 import {
@@ -1163,14 +1164,21 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     refetch
   } = useGetAllTourQuery(undefined);
   const {
+    data: motorBookingsData,
+    isLoading: isLoadingMotorBookings,
+    refetch: refetchMotor
+  } = useFindAllBookMotorsQuery(undefined);
+  const {
     data: touristsData,
     isLoading: isLoadingTourists,
     refetch: refetchTourists
   } = useFindAllTouristQuery();
 
-  // Debug logging
+  const isLoading = isLoadingBookings || isLoadingTourists || isLoadingMotorBookings;
 
-  const isLoading = isLoadingBookings || isLoadingTourists;
+  const normalizedTourBookings = (bookingsData?.data || bookingsData?.datas || []).map((b: any) => ({...b, type: 'tour'}));
+  const normalizedMotorBookings = (motorBookingsData?.data || motorBookingsData?.datas || []).map((b: any) => ({...b, type: 'motor'}));
+  const allBookings = [...normalizedTourBookings, ...normalizedMotorBookings].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1190,30 +1198,43 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
 
   // Cancel Tour Logic
   const [updateStatusTour, { isLoading: isUpdatingStatus }] = useUpdateStatusTourMutation();
+  const [updateStatusMotor, { isLoading: isUpdatingMotorStatus }] = useUpdateStatusMotorMutation();
   const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
+  const [bookingToCancelType, setBookingToCancelType] = useState<string | null>(null);
 
-  const handleCancelTour = (bookingId: string) => {
+  const handleCancelTour = (bookingId: string, type: string) => {
     setBookingToCancelId(bookingId);
+    setBookingToCancelType(type);
     setIsCancelAlertOpen(true);
   };
 
   const onConfirmCancel = async () => {
-    if (!bookingToCancelId) return;
+    if (!bookingToCancelId || !bookingToCancelType) return;
 
     try {
-      await updateStatusTour({
-        id: bookingToCancelId,
-        data: { status: "cancelled" }
-      }).unwrap();
-      toast.success("Tour has been canceled successfully");
+      if (bookingToCancelType === 'motor') {
+        await updateStatusMotor({
+          id: bookingToCancelId,
+          status: "cancelled"
+        }).unwrap();
+        toast.success("Motor rental has been canceled successfully");
+      } else {
+        await updateStatusTour({
+          id: bookingToCancelId,
+          data: { status: "cancelled" }
+        }).unwrap();
+        toast.success("Tour has been canceled successfully");
+      }
       refetch(); // Refetch bookings list
+      refetchMotor();
     } catch (error) {
-      console.error("Failed to cancel tour:", error);
-      toast.error("Failed to cancel tour");
+      console.error("Failed to cancel booking:", error);
+      toast.error("Failed to cancel booking");
     } finally {
       setIsCancelAlertOpen(false);
       setBookingToCancelId(null);
+      setBookingToCancelType(null);
     }
   };
 
@@ -1235,14 +1256,14 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     );
   }
 
-  if (!bookingsData?.data || bookingsData.data.length === 0) {
+  if (allBookings.length === 0) {
     return (
       <div>
         <h2 className="mb-6 text-2xl font-bold text-gray-900">My Booking</h2>
         <div className="flex flex-col items-center justify-center py-16">
           <Ticket className="mb-4 h-16 w-16 text-gray-300" />
           <h3 className="mb-2 text-lg font-semibold text-gray-900">Belum ada booking</h3>
-          <p className="text-sm text-gray-500">Booking tour Anda akan muncul di sini</p>
+          <p className="text-sm text-gray-500">Booking Anda akan muncul di sini</p>
         </div>
       </div>
     );
@@ -1252,12 +1273,12 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     <div>
       <h2 className="mb-6 text-2xl font-bold text-gray-900">My Booking</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {bookingsData.data.map((booking: any) => {
-          // Get first book tour item for visit date and destination
-          const firstItem = booking.book_tour_items?.[0];
-          const translation =
-            firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) ||
-            firstItem?.destination?.translations?.[0];
+        {allBookings.map((booking: any) => {
+          const isMotor = booking.type === 'motor';
+          const firstItem = isMotor ? booking.items?.[0] : booking.book_tour_items?.[0];
+          const translation = isMotor 
+            ? { name: firstItem?.motor_name }
+            : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);
 
           // Format subtotal as currency
           const formatSubtotal = (amount: string | number) => {
@@ -1278,6 +1299,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
             const statusConfig = {
               draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
               pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
+              confirmed: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
               ongoing: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
               completed: { label: "Completed", color: "bg-green-100 text-green-700" },
               cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" }
@@ -1287,7 +1309,6 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
 
           const statusBadge = getStatusBadge(booking.status);
 
-          // Get tourists for this booking
           const data = touristsData?.data || touristsData?.datas;
           const touristList = Array.isArray(data?.tourists)
             ? data.tourists
@@ -1295,12 +1316,18 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
               ? data
               : [];
 
-          const bookingTourists = touristList.filter((t: any) => t.book_tour_id === booking.id);
+          const bookingTourists = isMotor 
+            ? (booking.tourists || [])
+            : touristList.filter((t: any) => t.book_tour_id === booking.id);
 
           const touristCount = bookingTourists.length;
           const subtotalValue =
             typeof booking.subtotal === "string" ? parseFloat(booking.subtotal) : booking.subtotal;
-          const totalPrice = touristCount > 0 ? subtotalValue * touristCount : subtotalValue;
+          const totalPrice = isMotor 
+            ? (typeof booking.total_price === "string" ? parseFloat(booking.total_price) : booking.total_price) 
+            : (touristCount > 0 ? subtotalValue * touristCount : subtotalValue);
+          
+          const displayDate = isMotor ? booking.start_date : firstItem?.visit_date;
 
           return (
             <div
@@ -1333,9 +1360,9 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
               </div>
 
               {/* Visit Date */}
-              {firstItem?.visit_date && (
+              {displayDate && (
                 <p className="mb-2 text-sm text-gray-500">
-                  {new Date(firstItem.visit_date).toLocaleDateString("id-ID", {
+                  {new Date(displayDate).toLocaleDateString("id-ID", {
                     day: "numeric",
                     month: "long",
                     year: "numeric"
@@ -1343,11 +1370,10 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                 </p>
               )}
 
-              {/* Subtotal */}
               <div className="mb-3">
                 <p className="text-sm text-gray-500">Total Harga</p>
                 <p className="text-lg font-bold text-gray-900">{formatSubtotal(totalPrice)}</p>
-                {touristCount > 0 && (
+                {!isMotor && touristCount > 0 && (
                   <p className="text-xs text-gray-400">
                     {formatSubtotal(subtotalValue)} × {touristCount} orang
                   </p>
@@ -1388,24 +1414,16 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                 )}
               </div>
 
-              {/* Action Buttons */}
-              {!["ongoing", "completed", "cancelled"].includes(booking.status.toLowerCase()) && (
+               {/* Action Buttons */}
+              {(["pending", "draft"].includes(booking.status.toLowerCase())) && (
                 <div className="flex gap-2">
                   {touristCount > 0 && (
                     <Link
-                      href={
-                        booking.status.toLowerCase() === "pending"
-                          ? "#"
-                          : `/${locale}/payments?order_id=${booking.id}`
-                      }
-                      className={cn(
-                        "flex-1",
-                        booking.status.toLowerCase() === "pending" && "pointer-events-none"
-                      )}>
+                      href={`/${locale}/payments?order_id=${booking.id}`}
+                      className="flex-1">
                       <Button
                         size="sm"
-                        className="w-full bg-blue-500 text-white hover:bg-blue-600"
-                        disabled={booking.status.toLowerCase() === "pending"}>
+                        className="w-full bg-blue-500 text-white hover:bg-blue-600">
                         Checkout
                       </Button>
                     </Link>
@@ -1414,9 +1432,9 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                     variant="outline"
                     size="sm"
                     className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => handleCancelTour(booking.id)}
-                    disabled={booking.status.toLowerCase() === "pending"}>
-                    Cancel Tour
+                    onClick={() => handleCancelTour(booking.id, booking.type)}
+                    disabled={(isUpdatingStatus || isUpdatingMotorStatus) || (booking.status.toLowerCase() === "pending" && !isMotor)}>
+                    {isUpdatingStatus || isUpdatingMotorStatus ? "..." : "Cancel"}
                   </Button>
                 </div>
               )}
@@ -1489,60 +1507,126 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                         {selectedBooking.status}
                       </span>
                     </div>
-                    {selectedBooking.country && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Negara:</span>
-                        <span className="font-medium">{selectedBooking.country.name}</span>
-                      </div>
+                    {selectedBooking.type === 'motor' ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Mulai Sewa:</span>
+                          <span className="font-medium">
+                            {selectedBooking.start_date ? new Date(selectedBooking.start_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Selesai Sewa:</span>
+                          <span className="font-medium">
+                            {selectedBooking.end_date ? new Date(selectedBooking.end_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-100 pt-2">
+                          <span className="font-semibold text-gray-900">Total Harga:</span>
+                          <span className="font-bold text-blue-600">
+                            {new Intl.NumberFormat("id-ID", {
+                              style: "currency",
+                              currency: "IDR",
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(Number(selectedBooking.total_price) || 0)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {selectedBooking.country && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Negara:</span>
+                            <span className="font-medium">{selectedBooking.country.name}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between border-t border-gray-100 pt-2">
+                          <span className="font-semibold text-gray-900">Total Subtotal:</span>
+                          <span className="font-bold text-blue-600">
+                            {new Intl.NumberFormat("id-ID", {
+                              style: "currency",
+                              currency: "IDR",
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0
+                            }).format(parseFloat(selectedBooking.subtotal))}
+                          </span>
+                        </div>
+                      </>
                     )}
-                    <div className="flex justify-between border-t border-gray-100 pt-2">
-                      <span className="font-semibold text-gray-900">Total Subtotal:</span>
-                      <span className="font-bold text-blue-600">
-                        {new Intl.NumberFormat("id-ID", {
-                          style: "currency",
-                          currency: "IDR",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0
-                        }).format(parseFloat(selectedBooking.subtotal))}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 space-y-6 overflow-y-auto p-6">
-                {/* Tour Itinerary Detail */}
-                <div className="rounded-xl border border-gray-100 p-4">
-                  <h3 className="mb-4 text-sm font-bold text-gray-900">
-                    Detail Itinerary ({selectedBooking.book_tour_items?.length || 0} Destinasi)
-                  </h3>
-                  <div className="space-y-0">
-                    {(() => {
-                      // Sort items by visit_date chronologically
-                      const items = selectedBooking.book_tour_items || [];
-                      const sortedItems = [...items].sort((a: any, b: any) => {
-                        const dateA = new Date(a.visit_date).getTime();
-                        const dateB = new Date(b.visit_date).getTime();
-                        if (dateA !== dateB) return dateA - dateB;
-                        // Stable secondary sort using created_at
-                        const seqA = new Date(a.created_at || 0).getTime();
-                        const seqB = new Date(b.created_at || 0).getTime();
-                        return seqA - seqB;
-                      });
+                {selectedBooking.type === 'motor' ? (
+                  /* Motor Rental Items */
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <h3 className="mb-4 text-sm font-bold text-gray-900">
+                      Detail Motor ({selectedBooking.items?.length || 0} Unit)
+                    </h3>
+                    <div className="space-y-3">
+                      {(selectedBooking.items || []).map((item: any, index: number) => (
+                        <div key={item.id || index} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                          <div className="mb-1 font-medium text-gray-900">{item.motor_name}</div>
+                          <div className="flex justify-between text-sm text-gray-500">
+                            <span>Qty: {item.qty}</span>
+                            <span>{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(item.subtotal))}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-                      return sortedItems.map((item: any, index: number) => (
-                        <TourItemDetail
-                          key={item.id}
-                          item={item}
-                          index={index}
-                          locale={locale}
-                          dayNumber={index + 1}
-                          dayRange={undefined}
-                        />
-                      ));
-                    })()}
+                    {/* Tourists */}
+                    {(selectedBooking.tourists || []).length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="mb-2 text-sm font-bold text-gray-900">Data Penyewa</h4>
+                        <div className="space-y-2">
+                          {(selectedBooking.tourists || []).map((t: any, i: number) => (
+                            <div key={t.id || i} className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
+                              <div className="font-medium text-gray-900">{t.name}</div>
+                              <div className="text-gray-500">No. Paspor: {t.passport_number}</div>
+                              <div className="text-gray-500">Telp: {t.phone_number}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  /* Tour Itinerary Detail */
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <h3 className="mb-4 text-sm font-bold text-gray-900">
+                      Detail Itinerary ({selectedBooking.book_tour_items?.length || 0} Destinasi)
+                    </h3>
+                    <div className="space-y-0">
+                      {(() => {
+                        // Sort items by visit_date chronologically
+                        const items = selectedBooking.book_tour_items || [];
+                        const sortedItems = [...items].sort((a: any, b: any) => {
+                          const dateA = new Date(a.visit_date).getTime();
+                          const dateB = new Date(b.visit_date).getTime();
+                          if (dateA !== dateB) return dateA - dateB;
+                          // Stable secondary sort using created_at
+                          const seqA = new Date(a.created_at || 0).getTime();
+                          const seqB = new Date(b.created_at || 0).getTime();
+                          return seqA - seqB;
+                        });
+
+                        return sortedItems.map((item: any, index: number) => (
+                          <TourItemDetail
+                            key={item.id}
+                            item={item}
+                            index={index}
+                            locale={locale}
+                            dayNumber={index + 1}
+                            dayRange={undefined}
+                          />
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -1563,13 +1647,18 @@ const OrderDetailModal = ({
   payment: any;
 }) => {
   const locale = useLocale();
-  const { data: tourResponse, isLoading } = useFindTourByIdQuery(payment?.book_tour_id, {
+  const { data: tourResponse, isLoading: isLoadingTour } = useFindTourByIdQuery(payment?.book_tour_id, {
     skip: !open || !payment?.book_tour_id
+  });
+  const { data: motorResponse, isLoading: isLoadingMotor } = useFindBookMotorByIdQuery(payment?.book_motor_id, {
+    skip: !open || !payment?.book_motor_id
   });
   const [cancelPayment, { isLoading: isCancelling }] = useCancelPaymentMutation();
   const [showCancelAlert, setShowCancelAlert] = useState(false);
 
   const tourData = tourResponse?.data;
+  const motorData = motorResponse?.data;
+  const isLoading = isLoadingTour || isLoadingMotor;
 
   // Currency formatting
   const currentCurrency = useSelector(
@@ -1648,13 +1737,13 @@ const OrderDetailModal = ({
               </div>
             </div>
 
-            {/* Tour Status Summary Card */}
-            {tourData && (
+            {/* Status Summary Card */}
+            {(tourData || motorData) && (
               <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-blue-900">Booking Status</span>
                   <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 capitalize">
-                    {tourData.status}
+                    {payment?.service_type === "tour" ? tourData?.status : motorData?.status}
                   </span>
                 </div>
               </div>
@@ -1666,35 +1755,94 @@ const OrderDetailModal = ({
               <div className="flex justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
               </div>
-            ) : tourData ? (
+            ) : (tourData || motorData) ? (
               <div className="space-y-6">
-                {/* Itinerary Section Card */}
+                {/* Detail Layanan Section */}
                 <div className="rounded-xl border border-gray-100 p-4">
-                  <h3 className="mb-4 text-sm font-bold text-gray-900">
-                    Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
-                  </h3>
+                   <h3 className="mb-4 text-sm font-bold text-gray-900">Detail Layanan</h3>
+                   <div className="space-y-4">
+                     {payment?.service_type === "tour" ? (
+                       tourData?.book_tour_items?.map((item: any) => (
+                         <div key={item.id} className="flex gap-4 rounded-xl border border-gray-50 p-3">
+                           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                             {item.destination?.thumbnail ? (
+                               <img src={item.destination.thumbnail} alt="" className="h-full w-full object-cover" />
+                             ) : (
+                               <div className="flex h-full w-full items-center justify-center">
+                                 <Ticket className="h-5 w-5 text-gray-300" />
+                               </div>
+                             )}
+                           </div>
+                           <div className="flex flex-col justify-center">
+                             <h4 className="text-sm font-bold text-gray-900">{item.destination?.name}</h4>
+                             <p className="text-[10px] text-gray-500">{item.destination?.location}</p>
+                             <p className="mt-1 font-mono text-xs font-bold text-blue-600">
+                               {formatPrice(item.destination?.price, payment?.currency)}
+                             </p>
+                           </div>
+                         </div>
+                       ))
+                     ) : (
+                       motorData?.book_motor_items?.map((item: any) => (
+                         <div key={item.id} className="flex gap-4 rounded-xl border border-gray-50 p-3">
+                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                             {item.motor?.image ? (
+                               <img src={item.motor.image} alt="" className="h-full w-full object-cover" />
+                             ) : (
+                               <div className="flex h-full w-full items-center justify-center">
+                                 <Icon name="Bike" className="h-5 w-5 text-gray-300" />
+                               </div>
+                             )}
+                           </div>
+                           <div className="flex flex-col justify-center">
+                             <h4 className="text-sm font-bold text-gray-900">{item.motor?.name}</h4>
+                             <p className="text-[10px] text-gray-500">{item.motor?.brand?.name}</p>
+                             <p className="mt-1 font-mono text-xs font-bold text-blue-600">
+                               {formatPrice(item.motor?.price, payment?.currency)}
+                             </p>
+                             <p className="text-[10px] text-gray-400">Qty: {item.qty}</p>
+                           </div>
+                         </div>
+                       ))
+                     )}
 
-                  <div className="space-y-0">
-                    {[...(tourData.book_tour_items || [])]
-                      .sort((a: any, b: any) => {
-                        const dateA = new Date(a.visit_date).getTime();
-                        const dateB = new Date(b.visit_date).getTime();
-                        if (dateA !== dateB) return dateA - dateB;
-                        const seqA = new Date(a.created_at || 0).getTime();
-                        const seqB = new Date(b.created_at || 0).getTime();
-                        return seqA - seqB;
-                      })
-                      .map((item: any, idx: number) => (
-                        <TourItemDetail
-                          key={item.id}
-                          item={item}
-                          index={idx}
-                          locale={locale}
-                          dayNumber={idx + 1}
-                        />
-                      ))}
-                  </div>
+                     {payment?.service_type === "rent_motor" && motorData && (
+                       <div className="rounded-lg bg-blue-50 p-3 text-[10px] text-blue-700">
+                         <p>Periode Sewa: {new Date(motorData.start_date).toLocaleDateString()} - {new Date(motorData.end_date).toLocaleDateString()}</p>
+                       </div>
+                     )}
+                   </div>
                 </div>
+
+                {/* Itinerary Section Card (Only for Tours) */}
+                {payment?.service_type === "tour" && tourData && (
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <h3 className="mb-4 text-sm font-bold text-gray-900">
+                      Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
+                    </h3>
+
+                    <div className="space-y-0">
+                      {[...(tourData.book_tour_items || [])]
+                        .sort((a: any, b: any) => {
+                          const dateA = new Date(a.visit_date).getTime();
+                          const dateB = new Date(b.visit_date).getTime();
+                          if (dateA !== dateB) return dateA - dateB;
+                          const seqA = new Date(a.created_at || 0).getTime();
+                          const seqB = new Date(b.created_at || 0).getTime();
+                          return seqA - seqB;
+                        })
+                        .map((item: any, idx: number) => (
+                          <TourItemDetail
+                            key={item.id}
+                            item={item}
+                            index={idx}
+                            locale={locale}
+                            dayNumber={idx + 1}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

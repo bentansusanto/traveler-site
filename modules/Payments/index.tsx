@@ -4,6 +4,7 @@ import Icon from "@/components/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useGetAllTourQuery } from "@/store/services/book-tour.service";
+import { useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useCreatePaymentMutation } from "@/store/services/payment.service";
 import { useFindAllTouristQuery } from "@/store/services/tourist.service";
@@ -50,32 +51,49 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
   const [isMobile, setIsMobile] = useState(false);
 
   // Fetch Booking Data - MUST be called before any conditional returns
-  const { data: bookingsData, isLoading: isLoadingBooking } = useGetAllTourQuery(undefined);
+  const { data: tourBookingsData, isLoading: isLoadingTourBooking } = useGetAllTourQuery(undefined);
+  const { data: motorBookingsData, isLoading: isLoadingMotorBooking } = useFindAllBookMotorsQuery();
 
   // Fetch Tourist Data - MUST be called before any conditional returns
   const { data: touristsData, isLoading: isLoadingTourists } = useFindAllTouristQuery();
 
   const booking = useMemo(() => {
-    const bookings = bookingsData?.datas || bookingsData?.data || [];
-    return bookings.find((b: any) => b.id === orderId);
-  }, [bookingsData, orderId]);
+    const tourBookings = tourBookingsData?.datas || tourBookingsData?.data || [];
+    const motorBookings = motorBookingsData?.datas || motorBookingsData?.data || [];
+    
+    const tourBooking = tourBookings.find((b: any) => b.id === orderId);
+    if (tourBooking) return { ...tourBooking, type: 'tour' };
+    
+    const motorBooking = motorBookings.find((b: any) => b.id === orderId);
+    if (motorBooking) return { ...motorBooking, type: 'motor' };
+    
+    return null;
+  }, [tourBookingsData, motorBookingsData, orderId]);
+
+  const isMotor = booking?.type === 'motor';
 
   const tourists = useMemo(() => {
-    // API returns { data: { tourists: [...] } } or { datas: [...] } depending on the endpoint
     const data = touristsData?.data || touristsData?.datas;
     const touristList = Array.isArray(data?.tourists)
       ? data.tourists
       : Array.isArray(data)
         ? data
         : [];
+    
+    if (isMotor) {
+      // API motor usually includes tourists in the booking object.
+      // If not, we try to filter by book_motor_id.
+      return booking?.tourists || touristList.filter((t: any) => t.book_motor_id === orderId);
+    }
     return touristList.filter((t: any) => t.book_tour_id === orderId);
-  }, [touristsData, orderId]);
+  }, [touristsData, orderId, booking, isMotor]);
 
   const totalPrice = useMemo(() => {
+    if (isMotor) return parseFloat(booking?.total_price || "0");
     const subtotal = parseFloat(booking?.subtotal || "0");
     const count = tourists.length || 0;
     return subtotal * count;
-  }, [booking, tourists]);
+  }, [booking, tourists, isMotor]);
 
   // Payment state
   const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentMutation();
@@ -116,12 +134,19 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
     setPaymentError(null);
 
     try {
-      const result = await createPayment({
-        book_tour_id: orderId,
+      const paymentData: any = {
         payment_method: "paypal",
-        currency: "IDR", // Always IDR because database stores amount in IDR
-        exchange_rate: idrToUsdRate // Send dynamic exchange rate to backend
-      }).unwrap();
+        currency: "IDR",
+        exchange_rate: idrToUsdRate
+      };
+
+      if (isMotor) {
+        paymentData.book_motor_id = orderId;
+      } else {
+        paymentData.book_tour_id = orderId;
+      }
+
+      const result = await createPayment(paymentData).unwrap();
 
       // Redirect to PayPal in same tab
       if (result.data?.redirect_url) {
@@ -146,7 +171,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
   };
 
   // NOW we can do conditional rendering after all hooks are called
-  if (isLoadingBooking || isLoadingTourists) {
+  if (isLoadingTourBooking || isLoadingMotorBooking || isLoadingTourists) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
@@ -227,7 +252,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
               <h3 className="mb-4 text-lg font-bold text-gray-900">Rincian Harga</h3>
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Person ({tourists.length} orang)</span>
+                  <span>{isMotor ? `Unit (${booking.items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
                   <span className="font-medium text-gray-900">
                     {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
@@ -279,18 +304,33 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                     {booking.country?.name || "Tour Package"}
                   </h4>
                   <div className="space-y-4">
-                    {booking.book_tour_items && booking.book_tour_items.length > 0 && (
-                      <div className="space-y-0">
-                        {(() => {
-                          const sortedItems = [...booking.book_tour_items].sort(
-                            (a: any, b: any) =>
-                              new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime()
-                          );
-                          return sortedItems.map((item: any) => (
-                            <SummaryTourItem key={item.id} item={item} locale={locale} />
-                          ));
-                        })()}
+                    {isMotor ? (
+                      <div className="space-y-2">
+                        {(booking.items || []).map((item: any) => (
+                          <div key={item.id} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">{item.motor_name}</span>
+                            <span className="font-medium">{item.qty} unit</span>
+                          </div>
+                        ))}
+                        <div className="mt-2 text-xs text-gray-400">
+                           {new Date(booking.start_date).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", { day: 'numeric', month: 'long' })} - 
+                           {new Date(booking.end_date).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
                       </div>
+                    ) : (
+                      booking.book_tour_items && booking.book_tour_items.length > 0 && (
+                        <div className="space-y-0">
+                          {(() => {
+                            const sortedItems = [...booking.book_tour_items].sort(
+                              (a: any, b: any) =>
+                                new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime()
+                            );
+                            return sortedItems.map((item: any) => (
+                              <SummaryTourItem key={item.id} item={item} locale={locale} />
+                            ));
+                          })()}
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
@@ -328,7 +368,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
               <h3 className="mb-4 text-lg font-bold text-gray-900">Rincian Harga</h3>
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Person ({tourists.length} orang)</span>
+                  <span>{isMotor ? `Unit (${booking.items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
                   <span className="font-medium text-gray-900">
                     {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
