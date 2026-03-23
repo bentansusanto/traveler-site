@@ -34,9 +34,12 @@ export const OrderRentMotorPage = () => {
   const { data: generalAddOnsResponse } = useFindAddOnsByCategoryQuery("general");
   
   const availableAddOns = useMemo(() => {
+    const motorAddOnList = motorAddOnsResponse?.datas || (Array.isArray(motorAddOnsResponse?.data) ? motorAddOnsResponse.data : []);
+    const generalAddOnList = generalAddOnsResponse?.datas || (Array.isArray(generalAddOnsResponse?.data) ? generalAddOnsResponse.data : []);
+    
     return [
-      ...(motorAddOnsResponse?.data || motorAddOnsResponse?.datas || []),
-      ...(generalAddOnsResponse?.data || generalAddOnsResponse?.datas || [])
+      ...motorAddOnList,
+      ...generalAddOnList
     ];
   }, [motorAddOnsResponse, generalAddOnsResponse]);
 
