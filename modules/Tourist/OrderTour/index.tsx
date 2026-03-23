@@ -163,6 +163,17 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
     }
   });
 
+  // Fetch all bookings and filter by ID
+  const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined, {
+    skip: !bookTourId
+  });
+
+  // Find the specific booking
+  const booking = useMemo(() => {
+    const bookings = bookingsData?.datas || bookingsData?.data || [];
+    return bookings.find((b: any) => b.id === bookTourId);
+  }, [bookingsData, bookTourId]);
+
   // Effect to populate form when data is loaded
   useEffect(() => {
     if (touristsData && initialTourists.length > 0 && !hasPopulated.current) {
@@ -187,17 +198,6 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
       }
     }
   }, [booking, formik.values.add_ons?.length]);
-
-  // Fetch all bookings and filter by ID
-  const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined, {
-    skip: !bookTourId
-  });
-
-  // Find the specific booking
-  const booking = useMemo(() => {
-    const bookings = bookingsData?.datas || bookingsData?.data || [];
-    return bookings.find((b: any) => b.id === bookTourId);
-  }, [bookingsData, bookTourId]);
 
   const totalPrice = useMemo(() => {
     if (!booking) return 0;
