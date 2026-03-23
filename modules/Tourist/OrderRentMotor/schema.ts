@@ -17,7 +17,8 @@ export const orderRentMotorSchema = z.object({
   end_date: z.date({
     required_error: "End date is required",
     invalid_type_error: "Invalid end date"
-  })
+  }),
+  add_ons: z.array(z.string()).optional()
 }).refine((data) => data.end_date > data.start_date, {
   message: "End date must be after start date",
   path: ["end_date"]

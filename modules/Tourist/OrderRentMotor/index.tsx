@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateBookMotorMutation } from "@/store/services/book-motor.service";
 import { useFindMotorByIdQuery } from "@/store/services/motor.service";
+import { useFindAddOnsByCategoryQuery } from "@/store/services/add-ons.service";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, differenceInDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { useFormik } from "formik";
@@ -28,6 +30,16 @@ export const OrderRentMotorPage = () => {
     motorId as string,
     { skip: !motorId }
   );
+  const { data: motorAddOnsResponse } = useFindAddOnsByCategoryQuery("motor");
+  const { data: generalAddOnsResponse } = useFindAddOnsByCategoryQuery("general");
+  
+  const availableAddOns = useMemo(() => {
+    return [
+      ...(motorAddOnsResponse?.data || motorAddOnsResponse?.datas || []),
+      ...(generalAddOnsResponse?.data || generalAddOnsResponse?.datas || [])
+    ];
+  }, [motorAddOnsResponse, generalAddOnsResponse]);
+
   const [createBookMotor, { isLoading: isCreating }] = useCreateBookMotorMutation();
 
   const motor = motorResponse?.data;
@@ -45,7 +57,8 @@ export const OrderRentMotorPage = () => {
         }
       ],
       start_date: new Date(),
-      end_date: new Date(new Date().getTime() + 24 * 60 * 60 * 1000) // Default 1 day
+      end_date: new Date(new Date().getTime() + 24 * 60 * 60 * 1000), // Default 1 day
+      add_ons: []
     },
     validate: (values) => {
       const result = orderRentMotorSchema.safeParse(values);
@@ -80,7 +93,8 @@ export const OrderRentMotorPage = () => {
           ],
           tourists: values.tourists,
           start_date: values.start_date.toISOString(),
-          end_date: values.end_date.toISOString()
+          end_date: values.end_date.toISOString(),
+          add_ons: values.add_ons
         };
 
         const response = await createBookMotor(payload).unwrap();
@@ -123,12 +137,19 @@ export const OrderRentMotorPage = () => {
     const dailyPrice = prices.find((p: any) => p.price_type === "daily")?.price || 0;
     const weeklyPrice = prices.find((p: any) => p.price_type === "weekly")?.price || 0;
 
-    if (rentalDays >= 7 && weeklyPrice > 0) {
-      const weeks = Math.floor(rentalDays / 7);
-      const remainingDays = rentalDays % 7;
-      return (weeks * Number(weeklyPrice)) + (remainingDays * Number(dailyPrice));
-    }
-    return rentalDays * Number(dailyPrice);
+    const weeks = Math.floor(rentalDays / 7);
+    const remainingDays = rentalDays % 7;
+
+    const basePrice = rentalDays >= 7 && weeklyPrice > 0
+      ? (weeks * Number(weeklyPrice)) + (remainingDays * Number(dailyPrice))
+      : rentalDays * Number(dailyPrice);
+
+    const addOnsPrice = (formik.values.add_ons || []).reduce((acc, id) => {
+      const addOn = availableAddOns.find(a => a.id === id);
+      return acc + (Number(addOn?.price) || 0);
+    }, 0);
+
+    return basePrice + addOnsPrice;
   };
 
   const totalPrice = calculateTotalPrice();
@@ -225,6 +246,73 @@ export const OrderRentMotorPage = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Add-ons Section */}
+          {availableAddOns.length > 0 && (
+            <Card className="rounded-3xl border-none shadow-sm ring-1 ring-gray-100">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon name="PlusCircle" className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-base font-bold text-gray-900">Tambahkan Add-ons</h2>
+                </div>
+                <div className="space-y-4 font-outfit">
+                  {availableAddOns.map((addOn) => (
+                    <div
+                      key={addOn.id}
+                      className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${
+                        formik.values.add_ons?.includes(addOn.id)
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-100 hover:border-blue-200"
+                      }`}
+                      onClick={() => {
+                        const current = formik.values.add_ons || [];
+                        if (current.includes(addOn.id)) {
+                          formik.setFieldValue(
+                            "add_ons",
+                            current.filter((id) => id !== addOn.id)
+                          );
+                        } else {
+                          formik.setFieldValue("add_ons", [...current, addOn.id]);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={addOn.id}
+                          checked={formik.values.add_ons?.includes(addOn.id)}
+                          onCheckedChange={() => {}} // Handled by div onClick
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{addOn.name}</p>
+                          {addOn.description && (
+                            <p className="text-xs text-gray-500 line-clamp-1">{addOn.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-blue-600">
+                          {new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: "IDR",
+                            maximumFractionDigits: 0
+                          }).format(addOn.price)}
+                          {addOn.max_price && addOn.max_price > addOn.price && (
+                            <span className="text-[10px] text-gray-400 block -mt-1">
+                              s/d {new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                maximumFractionDigits: 0
+                              }).format(addOn.max_price)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Traveler Info */}
           <Card className="rounded-3xl border-none shadow-sm ring-1 ring-gray-100">

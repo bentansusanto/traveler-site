@@ -239,7 +239,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
                 <span className="text-xs text-blue-600 font-medium">#{booking.id}</span>
               </div>
               <div className="space-y-2">
-                {(booking.items || []).map((item: any) => (
+                {(booking.book_motor_items || []).map((item: any) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span className="text-gray-600">{item.motor_name}</span>
                     <span className="font-medium">{item.qty} unit</span>
@@ -313,6 +313,26 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Add-ons Section (Collapsible) */}
+        {booking.booking_add_ons && booking.booking_add_ons.length > 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="flex w-full items-center justify-between p-4 border-b">
+              <h3 className="font-bold text-gray-900">Add-ons Terpilih</h3>
+              <Icon name="PlusCircle" className="h-5 w-5 text-blue-500" />
+            </div>
+            <div className="p-4 space-y-3">
+              {booking.booking_add_ons.map((addon: any) => (
+                <div key={addon.id} className="flex justify-between text-sm">
+                  <span className="text-gray-600">{addon.name}</span>
+                  <span className="font-medium text-blue-600">
+                    {formatCurrency(selectedCurrency === "USD" ? addon.price * idrToUsdRate : addon.price)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

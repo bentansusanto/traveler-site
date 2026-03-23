@@ -1275,7 +1275,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {allBookings.map((booking: any) => {
           const isMotor = booking.type === 'motor';
-          const firstItem = isMotor ? booking.items?.[0] : booking.book_tour_items?.[0];
+          const firstItem = isMotor ? booking.book_motor_items?.[0] : booking.book_tour_items?.[0];
           const translation = isMotor
             ? { name: firstItem?.motor_name }
             : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);
@@ -1563,10 +1563,10 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
                   /* Motor Rental Items */
                   <div className="rounded-xl border border-gray-100 p-4">
                     <h3 className="mb-4 text-sm font-bold text-gray-900">
-                      Detail Motor ({selectedBooking.items?.length || 0} Unit)
+                      Detail Motor ({selectedBooking.book_motor_items?.length || 0} Unit)
                     </h3>
                     <div className="space-y-3">
-                      {(selectedBooking.items || []).map((item: any, index: number) => (
+                      {(selectedBooking.book_motor_items || []).map((item: any, index: number) => (
                         <div key={item.id || index} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                           <div className="mb-1 font-medium text-gray-900">{item.motor_name}</div>
                           <div className="flex justify-between text-sm text-gray-500">

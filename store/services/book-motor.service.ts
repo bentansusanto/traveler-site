@@ -17,6 +17,7 @@ export interface CreateBookMotorDto {
   tourists: Tourist[];
   start_date: string;
   end_date: string;
+  add_ons?: string[];
 }
 
 export interface BookMotorResponse {

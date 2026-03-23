@@ -11,8 +11,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { useGetAllTourQuery } from "@/store/services/book-tour.service";
+import { useGetAllTourQuery, useUpdateTourMutation } from "@/store/services/book-tour.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
+import { useFindAddOnsByCategoryQuery } from "@/store/services/add-ons.service";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateTouristMutation, useFindAllTouristQuery } from "@/store/services/tourist.service";
 import { useFormik } from "formik";
 import { useLocale } from "next-intl";
@@ -56,10 +58,23 @@ const SummaryTourItem = ({ item, locale }: { item: any; locale: string }) => {
 export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
   const locale = useLocale();
   const router = useRouter();
-  const [createTourist, { isLoading: isCreating }] = useCreateTouristMutation();
+  const [createTourist, { isLoading: isCreatingTourist }] = useCreateTouristMutation();
+  const [updateTour, { isLoading: isUpdatingTour }] = useUpdateTourMutation();
+
+  const isCreating = isCreatingTourist || isUpdatingTour;
 
   // Fetch existing tourists for pre-population
   const { data: touristsData } = useFindAllTouristQuery();
+  const { data: tourAddOnsResponse } = useFindAddOnsByCategoryQuery("tour");
+  const { data: generalAddOnsResponse } = useFindAddOnsByCategoryQuery("general");
+
+  const availableAddOns = useMemo(() => {
+    return [
+      ...(tourAddOnsResponse?.data || tourAddOnsResponse?.datas || []),
+      ...(generalAddOnsResponse?.data || generalAddOnsResponse?.datas || [])
+    ];
+  }, [tourAddOnsResponse, generalAddOnsResponse]);
+
   const hasPopulated = useRef(false);
 
   const initialTourists = useMemo(() => {
@@ -94,7 +109,8 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
 
   const formik = useFormik<OrderTourValues>({
     initialValues: {
-      tourists: initialTourists
+      tourists: initialTourists,
+      add_ons: []
     },
     validate: (values) => {
       const result = orderTourSchema.safeParse(values);
@@ -129,7 +145,10 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
           }))
         };
 
-        await createTourist(payload).unwrap();
+        if (values.add_ons && values.add_ons.length > 0) {
+          await updateTour({ id: bookTourId, add_ons: values.add_ons }).unwrap();
+        }
+
         toast.success("Berhasil membuat data traveler!");
 
         setTimeout(() => {
@@ -147,11 +166,24 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
       // Only populate if we actually found matching tourists
       const isActuallyPopulated = initialTourists.some((t: any) => t.name !== "");
       if (isActuallyPopulated) {
-        formik.setValues({ tourists: initialTourists });
+        formik.setValues({
+          ...formik.values,
+          tourists: initialTourists
+        });
         hasPopulated.current = true;
       }
     }
   }, [initialTourists, touristsData, formik]);
+
+  // Set initial add_ons if booking has them
+  useEffect(() => {
+    if (booking?.booking_add_ons && formik.values.add_ons?.length === 0) {
+      const existingAddOnIds = booking.booking_add_ons.map((ba: any) => ba.add_on_id);
+      if (existingAddOnIds.length > 0) {
+        formik.setFieldValue("add_ons", existingAddOnIds);
+      }
+    }
+  }, [booking, formik.values.add_ons?.length]);
 
   // Fetch all bookings and filter by ID
   const { data: bookingsData, isLoading: isLoadingBookings } = useGetAllTourQuery(undefined, {
@@ -163,6 +195,19 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
     const bookings = bookingsData?.datas || bookingsData?.data || [];
     return bookings.find((b: any) => b.id === bookTourId);
   }, [bookingsData, bookTourId]);
+
+  const totalPrice = useMemo(() => {
+    if (!booking) return 0;
+    const itemsSubtotal = (booking.book_tour_items || []).reduce(
+      (acc: number, item: any) => acc + Number(item.destination?.price || 0),
+      0
+    );
+    const addOnsTotal = (formik.values.add_ons || []).reduce((acc: number, id: string) => {
+      const addOn = availableAddOns.find((a) => a.id === id);
+      return acc + (Number(addOn?.price) || 0);
+    }, 0);
+    return itemsSubtotal + addOnsTotal;
+  }, [booking, formik.values.add_ons, availableAddOns]);
 
   const addTourist = () => {
     formik.setFieldValue("tourists", [
@@ -370,6 +415,61 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
                 ))}
               </div>
             </div>
+
+            {/* Add-ons Section */}
+            {availableAddOns.length > 0 && (
+              <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">Tambahkan Add-ons</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {availableAddOns.map((addOn) => (
+                    <div
+                      key={addOn.id}
+                      className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                        formik.values.add_ons?.includes(addOn.id)
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-100 hover:border-blue-200"
+                      }`}
+                      onClick={() => {
+                        const current = formik.values.add_ons || [];
+                        if (current.includes(addOn.id)) {
+                          formik.setFieldValue(
+                            "add_ons",
+                            current.filter((id) => id !== addOn.id)
+                          );
+                        } else {
+                          formik.setFieldValue("add_ons", [...current, addOn.id]);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={addOn.id}
+                          checked={formik.values.add_ons?.includes(addOn.id)}
+                          onCheckedChange={() => {}} // Handled by div onClick
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{addOn.name}</p>
+                          {addOn.description && (
+                            <p className="text-xs text-gray-500 line-clamp-1">{addOn.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-blue-600">
+                          {new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: "IDR",
+                            maximumFractionDigits: 0
+                          }).format(addOn.price)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column - Booking Summary */}
@@ -432,7 +532,7 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
                           style: "currency",
                           currency: "IDR",
                           minimumFractionDigits: 0
-                        }).format(parseFloat(booking.subtotal || "0"))}
+                        }).format(totalPrice)}
                       </span>
                     </Button>
                   </div>

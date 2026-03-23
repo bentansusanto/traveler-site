@@ -252,7 +252,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
               <h3 className="mb-4 text-lg font-bold text-gray-900">Rincian Harga</h3>
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>{isMotor ? `Unit (${booking.items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
+                  <span>{isMotor ? `Unit (${booking.book_motor_items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
                   <span className="font-medium text-gray-900">
                     {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",
@@ -306,7 +306,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                   <div className="space-y-4">
                     {isMotor ? (
                       <div className="space-y-2">
-                        {(booking.items || []).map((item: any) => (
+                        {(booking.book_motor_items || []).map((item: any) => (
                           <div key={item.id} className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">{item.motor_name}</span>
                             <span className="font-medium">{item.qty} unit</span>
@@ -334,6 +334,30 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
                     )}
                   </div>
                 </div>
+
+                {/* Add-ons Info */}
+                {booking.booking_add_ons && booking.booking_add_ons.length > 0 && (
+                  <div className="border-t border-gray-100 pt-6">
+                    <h4 className="mb-4 flex items-center gap-2 font-bold text-gray-900">
+                      <Icon name="PlusCircle" className="h-4 w-4 text-gray-400" />
+                      Add-ons Terpilih
+                    </h4>
+                    <div className="space-y-3">
+                      {booking.booking_add_ons.map((addon: any) => (
+                        <div key={addon.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">{addon.name}</span>
+                          <span className="font-medium text-blue-600">
+                            {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
+                              style: "currency",
+                              currency: selectedCurrency,
+                              minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+                            }).format(selectedCurrency === "USD" ? addon.price * idrToUsdRate : addon.price)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* People Info */}
                 <div className="border-t border-gray-100 pt-6">
@@ -368,7 +392,7 @@ export const PaymentPage = ({ orderId }: PaymentPageProps) => {
               <h3 className="mb-4 text-lg font-bold text-gray-900">Rincian Harga</h3>
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>{isMotor ? `Unit (${booking.items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
+                  <span>{isMotor ? `Unit (${booking.book_motor_items?.length || 0} unit)` : `Person (${tourists.length} orang)`}</span>
                   <span className="font-medium text-gray-900">
                     {new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
                       style: "currency",

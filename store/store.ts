@@ -13,6 +13,7 @@ import { profileService } from "./services/profile.service";
 import { rolesService } from "./services/role.service";
 import { motorService } from "./services/motor.service";
 import { bookMotorService } from "./services/book-motor.service";
+import { addOnsService } from "./services/add-ons.service";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ export const store = configureStore({
     [rolesService.reducerPath]: rolesService.reducer,
     [motorService.reducerPath]: motorService.reducer,
     [bookMotorService.reducerPath]: bookMotorService.reducer,
+    [addOnsService.reducerPath]: addOnsService.reducer,
     auth: authReducer,
     currency: currencyReducer,
     ui: uiReducer
@@ -41,7 +43,8 @@ export const store = configureStore({
       profileService.middleware,
       rolesService.middleware,
       motorService.middleware,
-      bookMotorService.middleware
+      bookMotorService.middleware,
+      addOnsService.middleware
     )
 });
 

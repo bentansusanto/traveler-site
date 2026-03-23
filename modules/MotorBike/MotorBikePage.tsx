@@ -4,6 +4,7 @@ import Icon from "@/components/icon";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { useMotorBikePageLogic } from "./logic";
 import { SearchDrawer } from "./SearchDrawer";
 import { SearchModal } from "./SearchModal";
@@ -54,11 +55,13 @@ export const MotorBikePage = () => {
               (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
             }}
           />
-          {!item.is_available && (
-            <div className="absolute top-2 left-2 rounded-md bg-gray-800/80 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
-              Unavailable
-            </div>
-          )}
+          <div
+            className={cn(
+              "absolute top-2 left-2 rounded-md px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm",
+              item.is_available ? "bg-emerald-500/80" : "bg-gray-800/80"
+            )}>
+            {item.is_available ? "Available" : "Unavailable"}
+          </div>
         </div>
 
         {/* Info */}

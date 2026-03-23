@@ -555,7 +555,7 @@ export const MyBookingPageMobile = () => {
           // Booking Cards
           filteredBookings.map((booking: any) => {
             const isMotor = booking.type === 'motor';
-            const firstItem = isMotor ? booking.items?.[0] : booking.book_tour_items?.[0];
+            const firstItem = isMotor ? booking.book_motor_items?.[0] : booking.book_tour_items?.[0];
             const translation = isMotor 
               ? { name: firstItem?.motor_name }
               : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);

@@ -53,6 +53,15 @@ export const bookTourService = createApi({
       }),
       // Invalidate cache after updating status
       invalidatesTags: ["BookTours"]
+    }),
+    // update book tour (for add-ons)
+    updateTour: builder.mutation<any, { id: string; add_ons: string[] }>({
+      query: ({ id, add_ons }) => ({
+        url: `/book-tours/update/${id}`,
+        method: "PUT",
+        body: { add_ons }
+      }),
+      invalidatesTags: ["BookTours"]
     })
   })
 });
@@ -61,5 +70,6 @@ export const {
   useCreateTourMutation,
   useGetAllTourQuery,
   useFindTourByIdQuery,
-  useUpdateStatusTourMutation
+  useUpdateStatusTourMutation,
+  useUpdateTourMutation
 } = bookTourService;

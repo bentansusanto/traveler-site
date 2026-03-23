@@ -242,6 +242,57 @@ export const MotorBikeDetailPage = () => {
                   )}
                 </div>
               </div>
+
+              {/* Terms & Conditions */}
+              <div className="mt-8 rounded-2xl bg-blue-50/30 p-6 border border-blue-100">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Icon name="Info" className="size-5 text-blue-500" />
+                  Terms & Conditions
+                </h3>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Photo of Passport
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Photo of Driving License
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Photo & Detail of Hotel/Villa
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Minimum rent 2 days
+                    </li>
+                  </ul>
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Email
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="size-1.5 rounded-full bg-blue-500" />
+                      Emergency phone number
+                    </li>
+                    <li className="mt-4">
+                      <p className="text-sm font-bold text-gray-900">Deposit :</p>
+                      <div className="mt-2 space-y-1 pl-3.5">
+                        <div className="text-xs text-gray-600 flex justify-between">
+                          <span>&lt; 220cc :</span>
+                          <span className="font-bold">500.000 IDR / 34 USD</span>
+                        </div>
+                        <div className="text-xs text-gray-600 flex justify-between">
+                          <span>&gt; 220cc :</span>
+                          <span className="font-bold">2.000.000 IDR / 134 USD</span>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             {/* Sidebar / Booking Card - Desktop Only */}

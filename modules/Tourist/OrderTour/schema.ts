@@ -10,7 +10,8 @@ export const touristSchema = z.object({
 
 export const orderTourSchema = z
   .object({
-    tourists: z.array(touristSchema).min(1, "At least one traveler is required")
+    tourists: z.array(touristSchema).min(1, "At least one traveler is required"),
+    add_ons: z.array(z.string()).optional()
   })
   .superRefine((data, ctx) => {
     const passportNumbers = data.tourists.map((t) => t.passportNumber.trim());
