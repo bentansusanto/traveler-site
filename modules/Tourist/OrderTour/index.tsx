@@ -69,9 +69,12 @@ export const OrderTourPage = ({ bookTourId }: OrderTourPageProps) => {
   const { data: generalAddOnsResponse } = useFindAddOnsByCategoryQuery("general");
 
   const availableAddOns = useMemo(() => {
+    const tourAddOnList = tourAddOnsResponse?.datas || (Array.isArray(tourAddOnsResponse?.data) ? tourAddOnsResponse.data : []);
+    const generalAddOnList = generalAddOnsResponse?.datas || (Array.isArray(generalAddOnsResponse?.data) ? generalAddOnsResponse.data : []);
+
     return [
-      ...(tourAddOnsResponse?.data || tourAddOnsResponse?.datas || []),
-      ...(generalAddOnsResponse?.data || generalAddOnsResponse?.datas || [])
+      ...tourAddOnList,
+      ...generalAddOnList
     ];
   }, [tourAddOnsResponse, generalAddOnsResponse]);
 
