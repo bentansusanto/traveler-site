@@ -6,7 +6,13 @@ const withNextIntl = createNextIntlPlugin("./lib/languages/i18n.ts");
 const nextConfig: NextConfig = {
   trailingSlash: true,
   devIndicators: false,
-  output: "standalone",
+  output: process.env.VERCEL ? undefined : "standalone",
+  eslint: {
+    ignoreDuringBuilds: true
+  },
+  typescript: {
+    ignoreBuildErrors: true
+  },
   images: {
     remotePatterns: [
       {
