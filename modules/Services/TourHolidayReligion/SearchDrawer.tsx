@@ -1,6 +1,5 @@
 "use client";
 
-import Icon from "@/components/icon";
 import {
   Drawer,
   DrawerClose,
@@ -8,11 +7,12 @@ import {
   DrawerHeader,
   DrawerTitle
 } from "@/components/ui/drawer";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Input } from "@/components/ui/input";
 import { useFindAllDestinationQuery } from "@/store/services/destination.service";
 import { useFindAllLocationQuery } from "@/store/services/location.service";
-import { useLocale } from "next-intl";
-import Image from "next/image";
+import { Compass, History, MapPin, Search, Sparkles, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -23,6 +23,7 @@ interface SearchDrawerProps {
 }
 
 export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDrawerProps) => {
+  const t = useTranslations("TourHoliday");
   const locale = useLocale();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,34 +31,44 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
 
   // Fetch all destinations
   const { data: response, isLoading: isLoadingDestinations } = useFindAllDestinationQuery();
-  const destinations = response?.data || [];
+  const destinations = (response as any)?.data || (response as any)?.datas || [];
 
   // Fetch all locations (countries and cities)
   const { data: locationResponse, isLoading: isLoadingLocations } = useFindAllLocationQuery();
-  const countries = locationResponse?.data || [];
+  const apiLocations = (locationResponse as any)?.data || (locationResponse as any)?.datas || [];
 
   const isLoading = isLoadingDestinations || isLoadingLocations;
 
   // Flatten locations for searching
-  const flattenedLocations = countries.flatMap((country: any) => {
+  const flattenedLocations = apiLocations.flatMap((location: any) => {
     const countryLocation = {
-      id: country.id,
-      name: country.name,
+      id: location.id,
+      name: location.name,
       region: "Negara",
       type: "location"
     };
 
-    const cityLocations = (country.cities || []).map((city: any) => ({
-      id: city.id,
-      name: city.name,
-      region: `Wilayah di ${country.name}`,
-      type: "location"
-    }));
+    const stateLocations = (location.states || []).flatMap((state: any) => {
+      const stateLoc = {
+        id: state.id,
+        name: state.name,
+        region: `Wilayah di ${location.name}`,
+        type: "location"
+      };
 
-    return [countryLocation, ...cityLocations];
+      const cityLocs = (state.cities || []).map((city: any) => ({
+        id: city.id,
+        name: city.name,
+        region: `Kota di ${state.name}, ${location.name}`,
+        type: "location"
+      }));
+
+      return [stateLoc, ...cityLocs];
+    });
+
+    return [countryLocation, ...stateLocations];
   });
 
-  // Load search history from localStorage on mount
   useEffect(() => {
     const savedHistory = localStorage.getItem("tour_search_history");
     if (savedHistory) {
@@ -69,39 +80,43 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
     }
   }, []);
 
-  // Reset search when drawer closes
   useEffect(() => {
     if (!open) {
       setSearchQuery("");
     }
   }, [open]);
 
-  // Filter destinations based on search query
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
 
     const query = searchQuery.toLowerCase();
     const results: any[] = [];
 
-    // Search in locations
     flattenedLocations.forEach((location: any) => {
       if (location.name.toLowerCase().includes(query)) {
-        results.push(location);
+        results.push({
+          id: `loc-${location.id}`,
+          name: location.name,
+          region: location.region,
+          type: "location"
+        });
       }
     });
 
-    // Search in destinations
-    destinations.forEach((dest: any) => {
-      const translation =
-        dest.translations?.find((t: any) => t.language_code === locale) || dest.translations?.[0];
-      const name = translation?.name || "";
-      const location = dest.location || "";
+    destinations.forEach((item: any) => {
+      const translation = item.translations?.find((tr: any) => tr.language_code === locale);
+      const name = translation?.name || item.name || "";
+      const location = item.location || "";
+      const cityName = item.city_name || "";
 
-      if (name.toLowerCase().includes(query) || location.toLowerCase().includes(query)) {
+      if (
+        name.toLowerCase().includes(query) ||
+        location.toLowerCase().includes(query) ||
+        cityName.toLowerCase().includes(query)
+      ) {
         results.push({
-          ...dest,
+          ...item,
           translatedName: name,
-          thumbnail: translation?.thumbnail,
           type: "destination"
         });
       }
@@ -110,21 +125,40 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
     return results;
   };
 
-  // Save search to history
-  const saveSearchHistory = (query: string) => {
-    if (!query.trim()) return;
+  const getRecommendations = () => {
+    const seenNames = new Set<string>();
+    const locRecommendations: any[] = [];
 
-    const newHistory = [query, ...searchHistory.filter((item) => item !== query)].slice(0, 5);
+    flattenedLocations.forEach((loc: any) => {
+      const lowerName = loc.name.toLowerCase();
+      if (!seenNames.has(lowerName) && locRecommendations.length < 4) {
+        seenNames.add(lowerName);
+        locRecommendations.push({
+          id: `rec-loc-${loc.id}`,
+          name: loc.name,
+          region: loc.region,
+          type: "location"
+        });
+      }
+    });
+
+    const destRecommendations = destinations.slice(0, 4).map((item: any) => {
+      const translation = item.translations?.find((tr: any) => tr.language_code === locale);
+      return {
+        ...item,
+        translatedName: translation?.name || item.name,
+        type: "destination"
+      };
+    });
+
+    return [...locRecommendations, ...destRecommendations];
+  };
+
+  const saveSearchHistory = (term: string) => {
+    if (!term.trim()) return;
+    const newHistory = [term, ...searchHistory.filter((item) => item !== term)].slice(0, 5);
     setSearchHistory(newHistory);
     localStorage.setItem("tour_search_history", JSON.stringify(newHistory));
-  };
-
-  const handleHistoryClick = (historyItem: string) => {
-    setSearchQuery(historyItem);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
   };
 
   const handleClearHistory = () => {
@@ -132,31 +166,27 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
     localStorage.removeItem("tour_search_history");
   };
 
-  // Get top 7 destinations to display when search is empty
-  const getTopDestinations = () => {
-    return destinations.slice(0, 7).map((dest: any) => {
-      const translation =
-        dest.translations?.find((t: any) => t.language_code === locale) || dest.translations?.[0];
-      return {
-        ...dest,
-        translatedName: translation?.name || "Unknown",
-        thumbnail: translation?.thumbnail,
-        type: "destination"
-      };
-    });
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
-  const displayItems = searchQuery.trim() ? getSearchResults() : getTopDestinations();
+  const handleHistoryClick = (item: string) => {
+    setSearchQuery(item);
+  };
+
+  const searchResults = getSearchResults();
+  const recommendations = getRecommendations();
+  const displayItems = searchQuery.trim() ? searchResults : recommendations;
 
   const highlightText = (text: string, query: string) => {
-    if (!query.trim()) return text;
+    if (!query.trim() || !text) return text;
 
     const parts = text.split(new RegExp(`(${query})`, "gi"));
     return (
       <>
         {parts.map((part, index) =>
           part.toLowerCase() === query.toLowerCase() ? (
-            <span key={index} className="font-semibold text-blue-600">
+            <span key={index} className="font-bold text-blue-600">
               {part}
             </span>
           ) : (
@@ -169,54 +199,58 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[90vh] max-h-[90vh]">
-        <DrawerTitle></DrawerTitle>
-        <DrawerHeader className="border-b border-gray-100 p-4">
+      <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col focus:outline-none">
+        <DrawerHeader className="border-b border-slate-100 p-4">
           <div className="flex items-center gap-3">
-            <DrawerClose asChild>
-              <button className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100">
-                <Icon name="X" className="size-5 text-gray-600" />
-              </button>
+            <DrawerClose className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+              <X className="h-4 w-4" />
             </DrawerClose>
-            <div className="relative flex flex-1 items-center">
-              <Icon name="Search" className="absolute left-3 size-4 text-gray-400" />
+            <div className="relative flex flex-1 items-center rounded-2xl border border-slate-200 bg-slate-50 px-3.5 focus-within:border-blue-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-600/10 transition-all">
+              <Search className="h-4 w-4 text-slate-400 mr-2 shrink-0" />
               <Input
                 type="text"
-                placeholder="Cari aktivitas atau destinasi"
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-xl border-gray-200 bg-gray-50 pr-10 pl-10 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="h-10 w-full border-none bg-transparent text-xs sm:text-sm font-medium shadow-none focus-visible:ring-0 p-0 text-slate-900"
                 autoFocus
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-3 flex size-5 items-center justify-center rounded-full bg-gray-300 transition-colors hover:bg-gray-400">
-                  <Icon name="X" className="size-3 text-white" />
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600">
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
           </div>
+          <DrawerTitle className="sr-only">{t("searchDrawerTitle")}</DrawerTitle>
         </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Search History Section - Only show when not searching */}
+        <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+          {/* Search History */}
           {!searchQuery.trim() && searchHistory.length > 0 && (
-            <div className="border-b border-gray-100 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900">Riwayat Pencarian</h3>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-700">{t("searchHistory")}</h3>
+                </div>
                 <button
+                  type="button"
                   onClick={handleClearHistory}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                  Hapus
+                  className="text-xs font-semibold text-rose-600 hover:underline">
+                  {t("clearHistory")}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {searchHistory.map((historyItem, index) => (
                   <button
                     key={index}
+                    type="button"
                     onClick={() => handleHistoryClick(historyItem)}
-                    className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-700 transition-all hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95">
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 active:scale-95 transition-all">
                     {historyItem}
                   </button>
                 ))}
@@ -224,17 +258,25 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
             </div>
           )}
 
-          {/* Results List */}
-          <div className="p-4">
+          {/* Results / Recommendations */}
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              <h3 className="text-xs font-bold text-slate-700">
+                {searchQuery.trim() ? t("searchResults") : t("recommendations")}
+              </h3>
+            </div>
+
             {isLoading ? (
               <div className="flex h-32 items-center justify-center">
-                <div className="size-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               </div>
             ) : displayItems.length > 0 ? (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {displayItems.map((item: any, index: number) => (
                   <button
                     key={item.id || index}
+                    type="button"
                     onClick={() => {
                       saveSearchHistory(item.name || item.translatedName);
                       if (item.type === "destination") {
@@ -246,15 +288,15 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
                       }
                       onOpenChange(false);
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-gray-50">
+                    className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition-colors hover:bg-slate-50 border border-transparent hover:border-slate-100">
                     {item.type === "location" ? (
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                        <Icon name="MapPin" className="size-5 text-gray-600" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <MapPin className="h-5 w-5" />
                       </div>
                     ) : (
-                      <div className="relative size-10 shrink-0 overflow-hidden rounded-lg">
-                        <Image
-                          src={item.thumbnail || "/images/placeholder.jpg"}
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                        <ImageWithFallback
+                          src={item.thumbnail || "/images/hero_things_todo_mobile.png"}
                           alt={item.translatedName || item.name}
                           fill
                           className="object-cover"
@@ -262,19 +304,15 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
+                      <p className="truncate text-xs sm:text-sm font-bold text-slate-900">
                         {item.type === "location"
                           ? highlightText(item.name, searchQuery)
                           : highlightText(item.translatedName || item.name, searchQuery)}
                       </p>
-                      <p className="truncate text-xs text-gray-500">
-                        {item.type === "location" ? (
-                          item.region
-                        ) : (
-                          <>
-                            {item.category || "Tempat Bermain"} • {item.location || "Indonesia"}
-                          </>
-                        )}
+                      <p className="truncate text-[11px] text-slate-500">
+                        {item.type === "location"
+                          ? item.region
+                          : item.category_destination_name || item.location || "Turkey"}
                       </p>
                     </div>
                   </button>
@@ -282,9 +320,9 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
               </div>
             ) : searchQuery.trim() ? (
               <div className="flex h-32 flex-col items-center justify-center text-center">
-                <Icon name="SearchX" className="mb-2 size-12 text-gray-300" />
-                <p className="text-sm font-medium text-gray-500">
-                  Tidak ada hasil untuk "{searchQuery}"
+                <Compass className="h-8 w-8 text-slate-300 mb-2" />
+                <p className="text-xs font-medium text-slate-500">
+                  {t("noResults", { query: searchQuery })}
                 </p>
               </div>
             ) : null}

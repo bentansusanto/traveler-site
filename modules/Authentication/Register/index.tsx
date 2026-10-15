@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { FormRegister } from "./FormRegister";
 
 export const RegisterPage = () => {
@@ -68,9 +69,9 @@ export const RegisterPage = () => {
 
             <p className="mt-6 text-center text-sm text-gray-600">
               Already have an account?{" "}
-              <a href="/login" className="text-primary hover:underline">
+              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
                 Log in
-              </a>
+              </Link>
             </p>
           </div>
         </div>

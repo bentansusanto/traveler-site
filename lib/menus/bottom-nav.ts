@@ -1,4 +1,4 @@
-import { ClipboardList, Gem, Heart, Home, Ticket, User } from "lucide-react";
+import { ClipboardList, ListChecks, Home, Ticket, User } from "lucide-react";
 
 export const BottomNavMenu = [
   {
@@ -7,9 +7,9 @@ export const BottomNavMenu = [
     icon: Home
   },
   {
-    title: "Wishlist",
-    href: "/wishlist",
-    icon: Heart
+    title: "Itinerary",
+    href: "/itineraries",
+    icon: ListChecks
   },
   {
     title: "Orders",

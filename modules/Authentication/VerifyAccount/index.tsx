@@ -19,7 +19,7 @@ export const VerifyAccount = () => {
           {status.type === "loading" && (
             <div className="flex flex-col items-center justify-center space-y-4">
               <div className="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-orange-500"></div>
-              <h2 className="text-2xl font-bold text-gray-900">Verifying Account...</h2>
+              <h2 className="text-3xl font-bold text-gray-900">Verifying Account...</h2>
               <p className="text-sm text-gray-600">Please wait while we verify your account.</p>
             </div>
           )}
@@ -42,7 +42,7 @@ export const VerifyAccount = () => {
               </div>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center rounded-md bg-orange-600 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none">
+                className="inline-flex items-center justify-center rounded-md bg-orange-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:outline-none shadow-sm hover:shadow-md">
                 Login
               </Link>
             </div>
@@ -67,7 +67,7 @@ export const VerifyAccount = () => {
                 <button
                   onClick={handleResend}
                   disabled={isResending}
-                  className={`text-sm font-medium text-orange-600 hover:text-orange-500 disabled:opacity-50 ${isResending ? "cursor-not-allowed" : "cursor-pointer"}`}
+                  className={`text-sm font-semibold text-orange-600 hover:text-orange-500 hover:underline disabled:opacity-50 ${isResending ? "cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   {isResending ? "Resending..." : "Resend Verification Code"}
                 </button>
@@ -79,6 +79,12 @@ export const VerifyAccount = () => {
                     {resendStatus.message}
                   </p>
                 )}
+                <p className="text-sm text-gray-600">
+                  Back to{" "}
+                  <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+                    Log in
+                  </Link>
+                </p>
               </div>
             </div>
           )}

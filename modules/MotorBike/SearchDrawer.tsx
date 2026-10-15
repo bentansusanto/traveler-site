@@ -1,6 +1,5 @@
 "use client";
 
-import Icon from "@/components/icon";
 import {
   Drawer,
   DrawerClose,
@@ -8,11 +7,12 @@ import {
   DrawerHeader,
   DrawerTitle
 } from "@/components/ui/drawer";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Input } from "@/components/ui/input";
 import { useFindAllMotorsQuery } from "@/store/services/motor.service";
 import { useFindAllLocationQuery } from "@/store/services/location.service";
-import { useLocale } from "next-intl";
-import Image from "next/image";
+import { Bike, ChevronRight, History, MapPin, Search, Sparkles, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -24,38 +24,52 @@ interface SearchDrawerProps {
 
 export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDrawerProps) => {
   const locale = useLocale();
+  const t = useTranslations("MotorBike");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   // Fetch all motors
-  const { data: response, isLoading: isLoadingMotors } = useFindAllMotorsQuery();
-  const motors = response?.data || [];
+  const { data: response, isLoading: isLoadingMotors } = useFindAllMotorsQuery({
+    limit: 100
+  });
+  const motors = response?.data || response?.datas || [];
 
   // Fetch all locations (countries and cities)
   const { data: locationResponse, isLoading: isLoadingLocations } = useFindAllLocationQuery();
-  const countries = locationResponse?.data || [];
+  const apiLocations = locationResponse?.data || locationResponse?.datas || [];
 
-  const isLoading = isLoadingMotors || isLoadingLocations;
-
-  // Flatten locations for searching
-  const flattenedLocations = countries.flatMap((country: any) => {
+  // Flatten the hierarchy to get a list of states and cities for search
+  const flattenedLocations = apiLocations.flatMap((location: any) => {
     const countryLocation = {
-      id: country.id,
-      name: country.name,
+      id: location.id,
+      name: location.name,
       region: "Negara",
       type: "location"
     };
 
-    const cityLocations = (country.cities || []).map((city: any) => ({
-      id: city.id,
-      name: city.name,
-      region: `Wilayah di ${country.name}`,
-      type: "location"
-    }));
+    const stateLocations = (location.states || []).flatMap((state: any) => {
+      const stateLoc = {
+        id: state.id,
+        name: state.name,
+        region: `Wilayah di ${location.name}`,
+        type: "location"
+      };
 
-    return [countryLocation, ...cityLocations];
+      const cityLocs = (state.cities || []).map((city: any) => ({
+        id: city.id,
+        name: city.name,
+        region: `Kota di ${state.name}, ${location.name}`,
+        type: "location"
+      }));
+
+      return [stateLoc, ...cityLocs];
+    });
+
+    return [countryLocation, ...stateLocations];
   });
+
+  const isLoading = isLoadingMotors || isLoadingLocations;
 
   // Load search history from localStorage on mount
   useEffect(() => {
@@ -139,7 +153,7 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
         motor.translations?.find((t: any) => t.language_code === locale) || motor.translations?.[0];
       return {
         ...motor,
-        translatedName: translation?.name_motor || "Unknown",
+        translatedName: translation?.name_motor || "Motor",
         thumbnail: motor.thumbnail,
         type: "motor"
       };
@@ -156,7 +170,7 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
       <>
         {parts.map((part, index) =>
           part.toLowerCase() === query.toLowerCase() ? (
-            <span key={index} className="font-semibold text-blue-600">
+            <span key={index} className="font-bold text-blue-600">
               {part}
             </span>
           ) : (
@@ -169,55 +183,58 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[90vh] max-h-[90vh]">
-        <DrawerTitle></DrawerTitle>
-        <DrawerHeader className="border-b border-gray-100 p-4">
+      <DrawerContent className="h-[90vh] max-h-[90vh] rounded-t-3xl border-t border-slate-200 bg-white">
+        <DrawerHeader className="border-b border-slate-100 p-4">
           <div className="flex items-center gap-3">
             <DrawerClose asChild>
-              <button className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100">
-                <Icon name="X" className="size-5 text-gray-600" />
+              <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200">
+                <X className="h-4 w-4" />
               </button>
             </DrawerClose>
             <div className="relative flex flex-1 items-center">
-              <Icon name="Search" className="absolute left-3 size-4 text-gray-400" />
+              <Search className="absolute left-3.5 h-4 w-4 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Cari motor atau lokasi"
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-xl border-gray-200 bg-gray-50 pr-10 pl-10 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="h-11 w-full rounded-2xl border-slate-200 bg-slate-50 pr-10 pl-10 text-sm font-medium focus-visible:ring-2 focus-visible:ring-blue-500"
                 autoFocus
               />
               {searchQuery && (
                 <button
                   onClick={handleClearSearch}
-                  className="absolute right-3 flex size-5 items-center justify-center rounded-full bg-gray-300 transition-colors hover:bg-gray-400">
-                  <Icon name="X" className="size-3 text-white" />
+                  className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-slate-300 text-white transition-colors hover:bg-slate-400">
+                  <X className="h-3 w-3" />
                 </button>
               )}
             </div>
           </div>
+          <DrawerTitle className="sr-only">{t("searchDrawerTitle")}</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto">
           {/* Search History Section - Only show when not searching */}
           {!searchQuery.trim() && searchHistory.length > 0 && (
-            <div className="border-b border-gray-100 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900">Riwayat Pencarian</h3>
+            <div className="border-b border-slate-100 p-4">
+              <div className="mb-2.5 flex items-center justify-between">
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                  <History className="h-3.5 w-3.5 text-slate-400" />
+                  <span>{t("recentSearch")}</span>
+                </h4>
                 <button
                   onClick={handleClearHistory}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                  Hapus
+                  {t("clearHistory")}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {searchHistory.map((historyItem, index) => (
                   <button
-                     key={index}
-                     onClick={() => handleHistoryClick(historyItem)}
-                     className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-700 transition-all hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95">
-                     {historyItem}
+                    key={index}
+                    onClick={() => handleHistoryClick(historyItem)}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-medium text-slate-700 transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 active:scale-95">
+                    {historyItem}
                   </button>
                 ))}
               </div>
@@ -226,9 +243,14 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
 
           {/* Results List */}
           <div className="p-4">
+            <h4 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>{searchQuery.trim() ? t("searchResults") : t("recommendations")}</span>
+            </h4>
+
             {isLoading ? (
               <div className="flex h-32 items-center justify-center">
-                <div className="size-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
               </div>
             ) : displayItems.length > 0 ? (
               <div className="space-y-1">
@@ -244,45 +266,47 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
                       }
                       onOpenChange(false);
                     }}
-                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-gray-50">
+                    className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition-colors hover:bg-slate-50 active:bg-blue-50/50">
                     {item.type === "location" ? (
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                        <Icon name="MapPin" className="size-5 text-gray-600" />
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <MapPin className="h-5 w-5" />
                       </div>
                     ) : (
-                      <div className="relative size-10 shrink-0 overflow-hidden rounded-lg">
-                        <Image
+                      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-100">
+                        <ImageWithFallback
                           src={item.thumbnail || "/images/placeholder.jpg"}
                           alt={item.translatedName || item.name}
                           fill
                           className="object-cover"
+                          fallbackSrc="/images/placeholder.jpg"
                         />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
+                      <p className="truncate text-xs sm:text-sm font-semibold text-slate-900">
                         {item.type === "location"
                           ? highlightText(item.name, searchQuery)
                           : highlightText(item.translatedName || item.name, searchQuery)}
                       </p>
-                      <p className="truncate text-xs text-gray-500">
+                      <p className="truncate text-[11px] text-slate-500 mt-0.5">
                         {item.type === "location" ? (
                           item.region
                         ) : (
                           <>
-                            {item.merek?.name_merek || "Motor"} • {item.state?.name || "Indonesia"}
+                            {item.merek?.name_merek || "Motor"} • {item.state?.name || "Turkey"}
                           </>
                         )}
                       </p>
                     </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                   </button>
                 ))}
               </div>
             ) : searchQuery.trim() ? (
-              <div className="flex h-32 flex-col items-center justify-center text-center">
-                <Icon name="SearchX" className="mb-2 size-12 text-gray-300" />
-                <p className="text-sm font-medium text-gray-500">
-                  Tidak ada hasil untuk "{searchQuery}"
+              <div className="flex h-36 flex-col items-center justify-center text-center">
+                <Bike className="mb-2 h-10 w-10 text-slate-300" />
+                <p className="text-xs font-medium text-slate-500">
+                  {t("noResults", { query: searchQuery })}
                 </p>
               </div>
             ) : null}
@@ -292,3 +316,4 @@ export const SearchDrawer = ({ open, onOpenChange, onLocationSelect }: SearchDra
     </Drawer>
   );
 };
+

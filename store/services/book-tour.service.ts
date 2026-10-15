@@ -1,63 +1,49 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import Cookies from "js-cookie";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export const bookTourService = createApi({
   reducerPath: "bookTourService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    prepareHeaders: (headers) => {
-      const token = Cookies.get("travel_token");
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-    credentials: "include"
-  }),
-  tagTypes: ["BookTours"], // Define cache tags
+  baseQuery: baseQueryWithReauth,
+  tagTypes: ["BookTours"],
   endpoints: (builder) => ({
-    // create book tour
+    // POST /book-tours (create book tour)
     createTour: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/book-tours/create",
+        url: "/book-tours",
         method: "POST",
         body: data
       }),
-      // Invalidate cache after creating a booking
       invalidatesTags: ["BookTours"]
     }),
-    // get all book tour
+    // GET /book-tours (get all customer book tours)
     getAllTour: builder.query<any, void>({
       query: () => ({
-        url: "/book-tours/find-all",
+        url: "/book-tours",
         method: "GET"
       }),
-      // Provide cache tag
       providesTags: ["BookTours"]
     }),
-    // find book tour by id
+    // GET /book-tours/:id (find book tour by id)
     findTourById: builder.query<any, string>({
       query: (id) => ({
-        url: `/book-tours/find/${id}`,
+        url: `/book-tours/${id}`,
         method: "GET"
       }),
-      // Provide cache tag with ID
       providesTags: (result, error, id) => [{ type: "BookTours", id }]
     }),
-    // update status book tour
-    updateStatusTour: builder.mutation<any, any>({
-      query: ({ id, data }) => ({
-        url: `/book-tours/update-status/${id}`,
-        method: "PUT",
-        body: data
+    // PATCH /book-tours/:id/status (update status book tour)
+    updateStatusTour: builder.mutation<any, { id: string; status: string }>({
+      query: ({ id, status }) => ({
+        url: `/book-tours/${id}/status`,
+        method: "PATCH",
+        body: { status }
       }),
-      // Invalidate cache after updating status
       invalidatesTags: ["BookTours"]
     }),
-    // update book tour (for add-ons)
+    // PUT /book-tours/:id (update book tour / add-ons)
     updateTour: builder.mutation<any, { id: string; add_ons: string[] }>({
       query: ({ id, add_ons }) => ({
-        url: `/book-tours/update/${id}`,
+        url: `/book-tours/${id}`,
         method: "PUT",
         body: { add_ons }
       }),

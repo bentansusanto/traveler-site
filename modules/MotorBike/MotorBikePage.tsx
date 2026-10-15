@@ -1,10 +1,31 @@
 "use client";
 
-import Icon from "@/components/icon";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import {
+  ArrowRight,
+  Bike,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Fuel,
+  LayoutGrid,
+  MapPin,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  X
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { FilterDrawer } from "./FilterDrawer";
+import { FilterSidebar } from "./FilterSidebar";
 import { useMotorBikePageLogic } from "./logic";
 import { SearchDrawer } from "./SearchDrawer";
 import { SearchModal } from "./SearchModal";
@@ -12,12 +33,19 @@ import { SearchModal } from "./SearchModal";
 export const MotorBikePage = () => {
   const {
     locale,
-    activePromoFilter,
-    setActivePromoFilter,
+    t,
+    sortBy,
+    setSortBy,
     activeCategory,
     setActiveCategory,
+    availableOnly,
+    setAvailableOnly,
+    engineCcFilter,
+    setEngineCcFilter,
     isDrawerOpen,
     setIsDrawerOpen,
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
     isModalOpen,
     setIsModalOpen,
     locationFilter,
@@ -25,63 +53,112 @@ export const MotorBikePage = () => {
     categories,
     isLoading,
     formatPrice,
-    filteredMotors
+    filteredMotors,
+    activeFilterCount,
+    handleResetFilters
   } = useMotorBikePageLogic();
 
   const renderMotorCard = (item: any, idx: number) => {
     const translation =
-      item.translations?.find((t: any) => t.language_code === locale) || item.translations?.[0];
-    const name = translation?.name_motor || "Unknown Motor";
+      item.translations?.find((tr: any) => tr.language_code === locale) || item.translations?.[0];
+    const name = translation?.name_motor || item.name || "Motor Unit";
     const image = item.thumbnail || "/images/placeholder.jpg";
+    const brandName = item.merek?.name_merek || item.brand?.name || "Motorcycle";
+    const locationName = item.state?.name || item.location || "Turkey";
 
     // Fallbacks for pricing based either on motor_prices or prices array
     const prices = item.motor_prices || item.prices || [];
-    const dailyPriceObj = prices.find((p: any) => p.price_type === 'daily');
+    const dailyPriceObj = prices.find((p: any) => p.price_type === "daily");
     const rawPrice = dailyPriceObj ? parseFloat(dailyPriceObj.price) : 0;
+    const strikePrice = rawPrice > 0 ? rawPrice * 1.25 : 0;
 
     return (
       <Link
         href={`/${locale}/motor-bike/${item.id}`}
         key={item.id || idx}
-        className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition-all hover:shadow-md">
-        {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-          <Image
+        className="group relative flex flex-col overflow-hidden rounded-2xl bg-white border border-slate-200/80 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-slate-200/60">
+        {/* Card Thumbnail Image */}
+        <div className="relative aspect-[16/11] w-full overflow-hidden bg-slate-100">
+          <ImageWithFallback
             src={image}
             alt={name}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
-            }}
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            fallbackSrc="/images/placeholder.jpg"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+          {/* Availability Floating Badge */}
           <div
             className={cn(
-              "absolute top-2 left-2 rounded-md px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm",
-              item.is_available ? "bg-emerald-500/80" : "bg-gray-800/80"
+              "absolute top-2 left-2 sm:top-3 sm:left-3 inline-flex items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-bold text-white backdrop-blur-md shadow-xs",
+              item.is_available ? "bg-emerald-500/90" : "bg-slate-800/90"
             )}>
-            {item.is_available ? "Available" : "Unavailable"}
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                item.is_available ? "bg-white animate-pulse" : "bg-slate-400"
+              )}
+            />
+            <span>{item.is_available ? t("available") : t("unavailable")}</span>
           </div>
+
+          {/* Engine CC Badge */}
+          {item.engine_cc && (
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 rounded-full bg-white/95 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-800 backdrop-blur-md shadow-xs border border-slate-200/60">
+              {item.engine_cc} cc
+            </div>
+          )}
         </div>
 
-        {/* Info */}
-        <div className="flex flex-1 flex-col p-4">
-          <h3 className="line-clamp-2 text-sm font-bold text-gray-900 md:text-base">{name}</h3>
-          <p className="mt-1 flex items-center gap-1 text-[10px] text-gray-500 md:text-xs">
-            {item.state?.name || "Unknown Location"} {item.engine_cc ? `• ${item.engine_cc}cc` : ""}
-          </p>
-
-          <div className="mt-2 flex items-center gap-1">
-            <Icon name="Star" className="size-3 fill-orange-400 text-orange-400" />
-            <span className="text-[10px] font-bold text-gray-700 md:text-xs">4.8</span>
-            <span className="text-[10px] text-gray-400 md:text-xs">/5 (10.2rb Review)</span>
+        {/* Card Body Info */}
+        <div className="flex flex-1 flex-col p-3 sm:p-4 md:p-5">
+          {/* Brand Tag & Location */}
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-1">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-blue-600 truncate">
+              {brandName}
+            </span>
+            <span className="flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-slate-500 truncate max-w-[70px] sm:max-w-[120px]">
+              <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-500 shrink-0" />
+              <span className="truncate">{locationName}</span>
+            </span>
           </div>
 
-          <div className="mt-auto pt-4">
-            <p className="text-[10px] text-gray-400 line-through md:text-xs">
-              {formatPrice(rawPrice * 1.5)}
-            </p>
-            <p className="text-sm font-bold text-red-600 md:text-lg">{formatPrice(rawPrice)}</p>
+          {/* Motor Name */}
+          <h3 className="line-clamp-1 text-xs sm:text-sm md:text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+            {name}
+          </h3>
+
+          {/* Rating */}
+          <div className="mt-2 flex items-center gap-1 sm:gap-1.5 border-b border-slate-100 pb-2 sm:pb-3">
+            <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+            <span className="text-[11px] sm:text-xs font-bold text-slate-800">4.9</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">
+              {t("reviews", { count: "2.4k" })}
+            </span>
+          </div>
+
+          {/* Price & Action Section */}
+          <div className="mt-auto pt-2 sm:pt-3 flex items-end justify-between gap-1.5">
+            <div className="min-w-0">
+              {strikePrice > 0 && (
+                <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 line-through truncate">
+                  {formatPrice(strikePrice)}
+                </p>
+              )}
+              <div className="flex items-baseline gap-0.5 sm:gap-1">
+                <span className="text-xs sm:text-base md:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                  {formatPrice(rawPrice)}
+                </span>
+                <span className="text-[9px] sm:text-[11px] font-medium text-slate-500 shrink-0">
+                  {t("perDay")}
+                </span>
+              </div>
+            </div>
+
+            <span className="inline-flex h-6 w-6 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-slate-100 text-slate-700 group-hover:bg-blue-600 group-hover:text-white transition-all duration-200">
+              <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+            </span>
           </div>
         </div>
       </Link>
@@ -89,183 +166,273 @@ export const MotorBikePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24">
-      {/* Hero Section */}
-      <div className="relative h-[300px] w-full overflow-hidden md:h-[480px] bg-gradient-to-br from-slate-800 via-blue-950 to-slate-900">
+    <div className="min-h-screen bg-slate-50/50 pb-24">
+      {/* Hero Banner Section */}
+      <div className="relative min-h-[380px] md:min-h-[500px] w-full overflow-hidden bg-slate-900 flex flex-col justify-center">
+        {/* Background Image & Clean Solid Overlay (No Gradient) */}
         <Image
-          src="https://www.pelago.com/img/products/ID-Indonesia/scooter-motorbike-rental-delivery/0419-0319_scooter-motorbike-rental-delivery-indonesia-pelago0.jpg"
-          alt="Rent a Motorcycle Hero"
+          src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=2000&q=80"
+          alt="Motorcycle Rental Banner"
           fill
-          className="object-cover opacity-50"
+          className="object-cover object-center"
           priority
         />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-black/45" />
 
-        {/* Top Floating Bar */}
-        <div className="absolute inset-x-0 top-5 z-20 flex items-center gap-3 px-5 md:hidden">
+        {/* Top Mobile Floating Bar */}
+        <div className="absolute inset-x-0 top-4 z-20 flex items-center gap-3 px-4 md:hidden">
           <Link
-            href="/"
+            href={`/${locale}`}
             prefetch={true}
-            className="flex size-10 items-center justify-center rounded-full bg-white shadow-lg transition-transform active:scale-95">
-            <Icon name="ChevronLeft" className="size-6 text-gray-800" />
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition-transform active:scale-95">
+            <ChevronLeft className="h-5 w-5" />
           </Link>
-          <div className="relative flex flex-1 items-center">
-            <Icon name="Search" className="absolute left-4 z-10 size-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Cari lokasi atau nama motor"
-              readOnly
-              onClick={() => setIsDrawerOpen(true)}
-              className="h-10 w-full cursor-pointer rounded-2xl bg-white/95 pr-4 pl-12 text-sm font-medium text-gray-600 shadow-lg backdrop-blur-sm transition-all outline-none focus:bg-white"
-            />
+          <div
+            onClick={() => setIsDrawerOpen(true)}
+            className="relative flex flex-1 items-center h-10 cursor-pointer rounded-2xl bg-white/95 px-3.5 shadow-md backdrop-blur-md">
+            <Search className="h-4 w-4 text-slate-400 mr-2 shrink-0" />
+            <span className="text-xs font-medium text-slate-500 truncate">
+              {locationFilter ? `${t("locationFilter", { location: locationFilter })}` : t("searchPlaceholder")}
+            </span>
           </div>
         </div>
 
-        {/* Hero Content Wrapper */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-5 pt-20">
-          {/* Desktop/Tablet Centered Content */}
-          <div className="hidden w-full max-w-4xl flex-col items-center text-center md:flex">
-            <div className="flex items-center gap-6">
-              <h1 className="text-4xl font-black tracking-tight text-white lg:text-5xl">
-                Rent Motorcycle
-              </h1>
-              <button className="flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-6 py-2.5 text-xs font-bold text-white backdrop-blur-md transition-all hover:bg-white/30 active:scale-95">
-                Lihat motor terdekat
-                <Icon name="ChevronRight" className="size-3.5" />
+        {/* Hero Content Center Wrapper */}
+        <div className="relative mx-auto w-full max-w-7xl px-5 pt-20 pb-12 md:pt-36 md:pb-16 md:px-8 flex flex-col items-center text-center">
+          {/* Main Title */}
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white drop-shadow-md max-w-3xl leading-tight">
+            {t("heroTitle")}
+          </h1>
+
+          {/* Subtitle */}
+          <p className="mt-4 md:mt-5 text-sm sm:text-base text-slate-200/90 max-w-xl font-normal leading-relaxed">
+            {t("heroSubtitle")}
+          </p>
+
+          {/* Desktop Search Card Bar */}
+          <div className="mt-8 hidden w-full max-w-2xl md:block">
+            <div
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center h-14 w-full cursor-pointer rounded-2xl bg-white p-2 shadow-xl shadow-black/25 transition-all hover:shadow-2xl">
+              <div className="flex flex-1 items-center px-4">
+                <Search className="h-5 w-5 text-slate-400 mr-3 shrink-0" />
+                <span className="text-sm font-medium text-slate-500 truncate">
+                  {locationFilter ? `${t("locationFilter", { location: locationFilter })}` : t("searchPlaceholder")}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="flex h-10 items-center gap-2 rounded-xl bg-blue-600 px-6 text-xs font-bold text-white shadow-md shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95">
+                <span>{t("searchBtn")}</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-
-            {/* Desktop Large Search Bar */}
-            <div className="mt-8 w-full max-w-2xl px-4 lg:max-w-3xl">
-              <div
-                className="group relative flex cursor-pointer items-center transition-all"
-                onClick={() => setIsModalOpen(true)}>
-                <Icon
-                  name="Search"
-                  className="absolute left-6 size-6 text-gray-400 transition-colors group-focus-within:text-blue-500"
-                />
-                <input
-                  type="text"
-                  placeholder="Cari motor atau lokasi"
-                  readOnly
-                  className="h-16 w-full cursor-pointer rounded-2xl bg-white/95 pr-8 pl-16 text-lg font-medium text-gray-800 shadow-2xl backdrop-blur-sm transition-all outline-none focus:bg-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Bottom-Left Content */}
-          <div className="absolute bottom-10 left-5 flex flex-col items-start md:hidden">
-            <h1 className="text-2xl font-black tracking-tight text-white">
-              Rent Motorcycle
-            </h1>
-            <button className="mt-3 flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[10px] font-bold text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95">
-              Lihat motor terdekat
-              <Icon name="ChevronRight" className="size-3" />
-            </button>
           </div>
         </div>
       </div>
 
-      <div className="relative -mt-4 rounded-t-3xl bg-white p-5 md:mx-auto md:max-w-7xl md:px-8">
-        {/* Category Icons Grid */}
-        <div className="flex overflow-x-auto pb-4 gap-4 md:flex-wrap md:justify-start md:overflow-visible no-scrollbar">
-          {categories.map((cat, i) => (
-            <div
-              key={i}
-              className="flex cursor-pointer flex-col items-center gap-2 min-w-[70px]"
-              onClick={() => setActiveCategory(cat.name)}>
-              <div className="relative">
-                <div
-                  className={`flex size-14 items-center justify-center rounded-full shadow-sm transition-all hover:scale-110 active:scale-90 md:size-16 ${
-                    activeCategory === cat.name
-                      ? "bg-blue-600 text-white shadow-blue-200"
-                      : "bg-blue-50 text-blue-600"
-                  }`}>
-                  <Icon name={cat.icon as any} className="size-7 md:size-8" />
-                </div>
-                {cat.tag && (
-                  <span className="absolute -top-1 -right-1 rounded-md bg-red-600 px-1 py-0.5 text-[8px] font-bold text-white md:text-[10px]">
-                    {cat.tag}
-                  </span>
-                )}
-              </div>
-              <span className="line-clamp-2 text-center text-[10px] leading-tight font-medium text-gray-700 md:text-xs">
-                {cat.name}
+      {/* Main Content Body */}
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8 py-8 md:py-10">
+        {/* Section Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-slate-200/80 pb-5">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                {t("allMotorsTitle")}
+              </h2>
+              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-100">
+                {t("showingResults", { count: filteredMotors.length })}
               </span>
             </div>
-          ))}
-        </div>
-
-        {/* Promo Header */}
-        <div className="mt-8 md:mt-12">
-          <h2 className="text-lg font-black text-gray-900 md:text-2xl">
-            Semua Motor Pilihan buat Jalan-jalan
-          </h2>
-          <div className="mt-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-xs font-medium text-gray-500 md:text-sm">
-              Sewa motor dengan harga terjangkau dan kualitas terjamin. 🏍️
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 font-normal">
+              {t("allMotorsSubtitle")}
             </p>
-            {locationFilter && (
+          </div>
+
+          {/* Mobile Filter Trigger Button */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 active:scale-95 transition-all">
+              <SlidersHorizontal className="h-4 w-4 text-blue-600" />
+              <span>{t("openFilter")}</span>
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {activeFilterCount > 0 && (
               <button
-                onClick={() => setLocationFilter(null)}
-                className="flex items-center gap-2 rounded-lg bg-blue-50 w-max px-3 py-1.5 text-xs font-bold text-blue-600 transition-all hover:bg-blue-100 self-start md:self-auto">
-                <Icon name="MapPin" className="size-3.5" />
-                Lokasi: {locationFilter}
-                <Icon name="X" className="ml-1 size-3.5" />
+                type="button"
+                onClick={handleResetFilters}
+                className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>{t("resetAll")}</span>
               </button>
             )}
           </div>
+        </div>
 
-          {/* Filter Tabs */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            {["Terbaru", "Promo", "Terlaris"].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setActivePromoFilter(filter)}
-                className={`rounded-xl border px-6 py-2.5 text-xs font-bold transition-all active:scale-95 md:text-sm ${
-                  activePromoFilter === filter
-                    ? "border-blue-500 bg-blue-50 text-blue-600 shadow-sm"
-                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}>
-                {filter}
-              </button>
-            ))}
+        {/* 2-Column Responsive Layout: Left Sidebar + Right Motor Catalog */}
+        <div className="mt-6 lg:mt-8 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+          {/* Left Sticky Filter Sidebar (Desktop >= 1024px) */}
+          <aside className="hidden lg:block lg:col-span-4 xl:col-span-3 lg:sticky lg:top-24">
+            <FilterSidebar
+              categories={categories}
+              activeCategory={activeCategory}
+              setActiveCategory={setActiveCategory}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              availableOnly={availableOnly}
+              setAvailableOnly={setAvailableOnly}
+              engineCcFilter={engineCcFilter}
+              setEngineCcFilter={setEngineCcFilter}
+              locationFilter={locationFilter}
+              setLocationFilter={setLocationFilter}
+              activeFilterCount={activeFilterCount}
+              handleResetFilters={handleResetFilters}
+            />
+          </aside>
+
+          {/* Right Motor Catalog Listing (Desktop & Mobile) */}
+          <div className="lg:col-span-8 xl:col-span-9">
+            {/* Active Filter Badges Bar (Quick individual chip removal) */}
+            {(activeCategory !== "all" ||
+              locationFilter ||
+              availableOnly ||
+              engineCcFilter !== "all") && (
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                {activeCategory !== "all" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    <Bike className="h-3.5 w-3.5" />
+                    <span>{activeCategory}</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory("all")}
+                      className="text-blue-500 hover:text-blue-800 ml-0.5">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+
+                {locationFilter && (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                    <MapPin className="h-3.5 w-3.5 text-red-500" />
+                    <span>{locationFilter}</span>
+                    <button
+                      type="button"
+                      onClick={() => setLocationFilter(null)}
+                      className="text-red-500 hover:text-red-800 ml-0.5">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+
+                {availableOnly && (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>{t("availableOnly")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAvailableOnly(false)}
+                      className="text-emerald-500 hover:text-emerald-800 ml-0.5">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+
+                {engineCcFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700">
+                    <span>
+                      {engineCcFilter === "small"
+                        ? "≤ 125 cc"
+                        : engineCcFilter === "medium"
+                        ? "150 - 250 cc"
+                        : "> 250 cc"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEngineCcFilter("all")}
+                      className="text-purple-500 hover:text-purple-800 ml-0.5">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Motors Grid / Skeletons / Empty State */}
+            {isLoading ? (
+              <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-xs space-y-2 sm:space-y-3">
+                    <Skeleton className="aspect-[16/11] w-full rounded-xl" />
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-3 w-12 sm:w-16" />
+                        <Skeleton className="h-3 w-14 sm:w-20" />
+                      </div>
+                      <Skeleton className="h-3.5 sm:h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <div className="pt-2 sm:pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <Skeleton className="h-4 sm:h-5 w-16 sm:w-24" />
+                        <Skeleton className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredMotors.length > 0 ? (
+              <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                {filteredMotors.map((item: any, idx: number) => renderMotorCard(item, idx))}
+              </div>
+            ) : (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-xs">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4 shadow-xs">
+                  <Bike className="h-8 w-8" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">{t("emptyTitle")}</h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-sm leading-relaxed">
+                  {t("emptyDesc")}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-blue-600/25 transition-all hover:bg-blue-700 active:scale-95">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>{t("resetFilter")}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Content Section */}
-        <div className="mt-8">
-          {isLoading ? (
-            <div className="flex h-64 items-center justify-center">
-              <div className="size-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-            </div>
-          ) : (
-            (() => {
-              if (filteredMotors.length > 0) {
-                return (
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:gap-8">
-                    {filteredMotors.map((item: any, idx: number) =>
-                      renderMotorCard(item, idx)
-                    )}
-                  </div>
-                );
-              }
-
-              return (
-                <div className="flex h-64 flex-col items-center justify-center rounded-3xl bg-gray-50 text-center">
-                  <Icon name="SearchX" className="size-16 text-gray-300" />
-                  <p className="mt-4 text-sm font-medium text-gray-500">
-                    Opps! Tidak ada motor{" "}
-                    {activeCategory !== "Semua Merek" ? `di merek "${activeCategory}"` : ""}{" "}
-                    ditemukan.
-                  </p>
-                </div>
-              );
-            })()
-          )}
-        </div>
       </div>
+
+      {/* Mobile Filter & Sort Drawer */}
+      <FilterDrawer
+        open={isFilterDrawerOpen}
+        onOpenChange={setIsFilterDrawerOpen}
+        categories={categories}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        availableOnly={availableOnly}
+        setAvailableOnly={setAvailableOnly}
+        engineCcFilter={engineCcFilter}
+        setEngineCcFilter={setEngineCcFilter}
+        locationFilter={locationFilter}
+        setLocationFilter={setLocationFilter}
+        activeFilterCount={activeFilterCount}
+        handleResetFilters={handleResetFilters}
+        totalResults={filteredMotors.length}
+      />
 
       {/* Search Drawer - Mobile Only */}
       <SearchDrawer
@@ -283,3 +450,4 @@ export const MotorBikePage = () => {
     </div>
   );
 };
+

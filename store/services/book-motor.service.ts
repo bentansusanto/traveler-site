@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import Cookies from "js-cookie";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export interface BookMotorItem {
   motor_id: string;
@@ -10,58 +10,85 @@ export interface Tourist {
   name: string;
   passport_number: string;
   phone_number?: string;
+  gender: string;
+  nationality: string;
 }
 
 export interface CreateBookMotorDto {
   items: BookMotorItem[];
-  tourists: Tourist[];
+  tourists?: Tourist[];
   start_date: string;
   end_date: string;
   add_ons?: string[];
+  customer_id?: string;
+  booker_id?: string;
+  idempotency_key?: string;
+}
+
+export interface FilterBookMotorQuery {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
 }
 
 export interface BookMotorResponse {
   message: string;
   data: any;
   datas?: any[];
+  meta?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPage: number;
+  };
 }
 
 export const bookMotorService = createApi({
   reducerPath: "bookMotorService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    prepareHeaders: (headers) => {
-      const token = Cookies.get("travel_token");
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-    credentials: "include"
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["BookMotor"],
   endpoints: (builder) => ({
     createBookMotor: builder.mutation<BookMotorResponse, CreateBookMotorDto>({
       query: (data) => ({
-        url: "/book-motors/create",
+        url: "/book-motors",
         method: "POST",
         body: data
       }),
       invalidatesTags: ["BookMotor"]
     }),
-    findAllBookMotors: builder.query<BookMotorResponse, void>({
-      query: () => "/book-motors/find-all",
+    findAllBookMotors: builder.query<BookMotorResponse, FilterBookMotorQuery | void>({
+      query: (params) => ({
+        url: "/book-motors",
+        method: "GET",
+        params: params || undefined
+      }),
       providesTags: ["BookMotor"]
     }),
     findBookMotorById: builder.query<BookMotorResponse, string>({
       query: (id) => `/book-motors/${id}`,
       providesTags: (result, error, id) => [{ type: "BookMotor", id }]
     }),
+    updateBookMotor: builder.mutation<BookMotorResponse, { id: string; data: Partial<CreateBookMotorDto> }>({
+      query: ({ id, data }) => ({
+        url: `/book-motors/${id}`,
+        method: "PUT",
+        body: data
+      }),
+      invalidatesTags: ["BookMotor"]
+    }),
     updateStatusMotor: builder.mutation<any, { id: string; status: string }>({
       query: ({ id, status }) => ({
-        url: `/book-motors/update-status/${id}`,
-        method: "PUT",
+        url: `/book-motors/${id}/status`,
+        method: "PATCH",
         body: { status }
+      }),
+      invalidatesTags: ["BookMotor"]
+    }),
+    deleteBookMotor: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/book-motors/${id}`,
+        method: "DELETE"
       }),
       invalidatesTags: ["BookMotor"]
     })
@@ -72,5 +99,7 @@ export const {
   useCreateBookMotorMutation,
   useFindAllBookMotorsQuery,
   useFindBookMotorByIdQuery,
-  useUpdateStatusMotorMutation
+  useUpdateBookMotorMutation,
+  useUpdateStatusMotorMutation,
+  useDeleteBookMotorMutation
 } = bookMotorService;

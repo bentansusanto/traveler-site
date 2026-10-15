@@ -3,15 +3,19 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useForgotPasswordMutation } from "@/store/services/auth.service";
+import { useForgotPasswordMutation } from "@/store/services/customer.service";
 import { useFormik } from "formik";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { extractAuthErrorMessage } from "@/lib/auth-errors";
 import { ForgotPasswordFormValues, forgotPasswordSchema } from "./schema";
 
 export const FormForgotPassword = () => {
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
   const [isSuccess, setIsSuccess] = useState(false);
+  const t = useTranslations("Auth");
 
   const formik = useFormik<ForgotPasswordFormValues>({
     initialValues: {
@@ -34,11 +38,11 @@ export const FormForgotPassword = () => {
     onSubmit: async (values) => {
       try {
         await forgotPassword(values).unwrap();
-        toast.success("Password reset link sent to your email!");
+        toast.success(t("resetEmailSent"));
         setIsSuccess(true);
         formik.resetForm();
       } catch (error: any) {
-        toast.error(error?.data?.message || "Failed to send reset email");
+        toast.error(extractAuthErrorMessage(error, t));
       }
     }
   });
@@ -58,11 +62,11 @@ export const FormForgotPassword = () => {
             value={formik.values.email}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            className="w-full"
+            className="w-full text-sm h-12 rounded-md bg-gray-50 border-gray-200 focus-visible:ring-primary/20 transition-all px-4"
             placeholder="Email address"
           />
           {formik.touched.email && formik.errors.email && (
-            <p className="mt-1 text-sm text-red-600">{formik.errors.email}</p>
+            <p className="mt-1 text-xs text-red-500 px-4">{formik.errors.email}</p>
           )}
         </div>
       </div>
@@ -70,8 +74,7 @@ export const FormForgotPassword = () => {
       <div>
         <Button
           type="submit"
-          variant="default"
-          className="w-full"
+          className="w-full h-10 rounded-md text-sm font-medium transition-all shadow-sm hover:shadow-md"
           disabled={isLoading || !formik.isValid || !formik.dirty}>
           {isLoading ? "Sending..." : "Send Mail"}
         </Button>
@@ -80,6 +83,15 @@ export const FormForgotPassword = () => {
             Check your email for password reset instructions
           </div>
         )}
+      </div>
+
+      <div className="mt-6 text-center">
+        <p className="text-center text-sm text-gray-600">
+          Remember your password?{" "}
+          <Link href="/login" className="text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+            Log in
+          </Link>
+        </p>
       </div>
     </form>
   );

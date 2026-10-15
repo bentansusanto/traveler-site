@@ -1,17 +1,21 @@
 "use client";
-import { useLoginMutation } from "@/store/services/auth.service";
+import { useLoginMutation } from "@/store/services/customer.service";
 import { setLoginState } from "@/store/slices/authSlice";
 import { useFormik } from "formik";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
+import { useLocale, useTranslations } from "next-intl";
+import { extractAuthErrorMessage } from "@/lib/auth-errors";
 import { initialLoginValues, loginSchema } from "./schema";
 
 export const HookLogin = () => {
   const [login, { isLoading }] = useLoginMutation();
   const router = useRouter();
   const dispatch = useDispatch();
+  const locale = useLocale();
+  const t = useTranslations("Auth");
 
   const formik = useFormik({
     initialValues: initialLoginValues,
@@ -52,7 +56,7 @@ export const HookLogin = () => {
 
         if (accessToken) {
           // Store token in cookie with proper options
-          Cookies.set("travel_token", accessToken, {
+          Cookies.set("customer_token", accessToken, {
             expires: 7,
             sameSite: "lax",
             path: "/"
@@ -60,28 +64,18 @@ export const HookLogin = () => {
 
           dispatch(setLoginState({ userName: response.data?.name || "User", token: accessToken }));
 
-          toast.success("Login successful! Redirecting...");
+          toast.success(t("loginSuccess"));
 
           // Redirect to home or dashboard
           setTimeout(() => {
-            router.push("/");
+            router.push(`/${locale}`);
           }, 1000);
         } else {
           throw new Error("No access token in response");
         }
       } catch (err: any) {
-        console.error("Login Error:", err);
-
-        // Extract error message from Pacific Travel API structure or fallback
-        const errorMessage =
-          err?.data?.Error?.body ||
-          (Array.isArray(err?.data?.Error) ? err.data.Error[0]?.body : null) ||
-          err?.data?.message ||
-          err?.data?.Message ||
-          err?.message ||
-          err?.error ||
-          "Login failed. Please check your credentials.";
-
+        console.warn("Login Error payload:", err?.data || err?.message);
+        const errorMessage = extractAuthErrorMessage(err, t);
         toast.error(errorMessage);
       }
     }

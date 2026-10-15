@@ -1,5 +1,4 @@
 "use client";
-import { UseRefreshToken } from "@/hooks/useRefreshToken";
 import React from "react";
 import { Footer } from "./Footer";
 import { MobileBottomNavbar } from "./MobileBottomNavbar";
@@ -12,9 +11,6 @@ export const TravelerLayout = ({
   children: React.ReactNode;
   hideLayoutOnMobile?: boolean;
 }) => {
-  // Auto refresh token on mount and periodically
-  UseRefreshToken();
-
   return (
     <>
       <div className={hideLayoutOnMobile ? "hidden md:block" : ""}>

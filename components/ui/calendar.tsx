@@ -2,7 +2,7 @@
 
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import * as React from "react";
-import { DayPicker, getDefaultClassNames, type DayButton } from "react-day-picker";
+import { DayPicker, getDefaultClassNames, type DayButton, type DropdownProps } from "react-day-picker";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,10 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) => date.toLocaleString("default", { month: "short" }),
+        formatMonthDropdown: (date, dateLib) =>
+          dateLib
+            ? dateLib.format(date, "MMM")
+            : date.toLocaleString("default", { month: "short" }),
         ...formatters
       }}
       classNames={{
@@ -40,7 +43,7 @@ function Calendar({
         months: cn("flex gap-4 flex-col md:flex-row relative", defaultClassNames.months),
         month: cn("flex flex-col w-full gap-4", defaultClassNames.month),
         nav: cn(
-          "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between",
+          "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between z-10",
           defaultClassNames.nav
         ),
         button_previous: cn(
@@ -54,18 +57,15 @@ function Calendar({
           defaultClassNames.button_next
         ),
         month_caption: cn(
-          "flex items-center justify-center h-(--cell-size) w-full px-(--cell-size)",
+          "flex items-center justify-center h-(--cell-size) w-full px-(--cell-size) relative z-20",
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5",
+          "w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5 relative z-20",
           defaultClassNames.dropdowns
         ),
-        dropdown_root: cn(
-          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
-          defaultClassNames.dropdown_root
-        ),
-        dropdown: cn("absolute bg-popover inset-0 opacity-0", defaultClassNames.dropdown),
+        dropdown_root: cn(defaultClassNames.dropdown_root),
+        dropdown: cn(defaultClassNames.dropdown),
         caption_label: cn(
           "select-none font-medium",
           captionLayout === "label"
@@ -123,6 +123,7 @@ function Calendar({
           return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
         },
         DayButton: CalendarDayButton,
+        Dropdown: CalendarDropdown,
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
@@ -177,4 +178,162 @@ function CalendarDayButton({
   );
 }
 
-export { Calendar, CalendarDayButton };
+function CalendarDropdown(props: DropdownProps) {
+  const { options = [], value, onChange, disabled, className } = props;
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  const isYear = options.some((opt) => opt.value > 100) || options.length > 12;
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value));
+
+  const filteredOptions = React.useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.trim().toLowerCase();
+    return options.filter(
+      (opt) => opt.label.toLowerCase().includes(q) || String(opt.value).includes(q)
+    );
+  }, [options, search]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch("");
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (listRef.current) {
+          const activeEl = listRef.current.querySelector("[data-selected='true']") as HTMLElement;
+          if (activeEl) {
+            activeEl.scrollIntoView({ block: "center", behavior: "auto" });
+          }
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    } else {
+      setSearch("");
+    }
+  }, [isOpen]);
+
+  const handleSelect = (val: number) => {
+    if (onChange) {
+      const fakeEvent = {
+        target: { value: String(val) },
+        currentTarget: { value: String(val) }
+      } as unknown as React.ChangeEvent<HTMLSelectElement>;
+      onChange(fakeEvent);
+    }
+    setIsOpen(false);
+    setSearch("");
+  };
+
+  return (
+    <div ref={containerRef} className="relative inline-block text-left">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
+        className={cn(
+          "flex h-7 items-center justify-between gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-0 text-xs font-semibold text-slate-800 shadow-2xs hover:bg-slate-50 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 active:scale-95 transition-all disabled:opacity-50",
+          isOpen && "border-blue-500 ring-1 ring-blue-400 bg-blue-50/50",
+          className
+        )}>
+        <span>{selectedOption?.label || value}</span>
+        <ChevronDownIcon
+          className={cn(
+            "size-3 text-slate-400 transition-transform duration-200",
+            isOpen && "rotate-180 text-blue-600"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "absolute top-full mt-1 z-50 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-0 zoom-in-95",
+            isYear ? "right-0 w-36" : "left-0 w-48"
+          )}>
+          {isYear && (
+            <div className="mb-1.5 px-0.5">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredOptions.length > 0) {
+                    e.preventDefault();
+                    handleSelect(filteredOptions[0].value);
+                  }
+                }}
+                placeholder="Cari tahun..."
+                className="w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+          )}
+
+          <div
+            ref={listRef}
+            className={cn(
+              "overflow-y-auto max-h-48 scrollbar-thin scrollbar-thumb-slate-200",
+              !isYear && "grid grid-cols-2 gap-1"
+            )}>
+            {filteredOptions.length === 0 ? (
+              <div className="py-2 text-center text-xs text-slate-400">Tidak ada data</div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = String(opt.value) === String(value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={opt.disabled}
+                    data-selected={isSelected}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelect(opt.value);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40 disabled:pointer-events-none text-left",
+                      isSelected &&
+                        "bg-blue-600 font-bold text-white hover:bg-blue-600 hover:text-white"
+                    )}>
+                    <span>{opt.label}</span>
+                    {isSelected && <span className="ml-1 text-[11px] text-white">✓</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export { Calendar, CalendarDayButton, CalendarDropdown };

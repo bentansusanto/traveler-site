@@ -1,77 +1,67 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import Cookies from "js-cookie";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
-export const authService = createApi({
-  reducerPath: "authService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    prepareHeaders: (headers) => {
-      const token = Cookies.get("travel_token");
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-    credentials: "include"
-  }),
+export const customerService = createApi({
+  reducerPath: "customerService",
+  baseQuery: baseQueryWithReauth,
   endpoints: (builder) => ({
-    // register user
+    // register customer
     register: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/auth/register",
+        url: "/customers/register",
         method: "POST",
         body: data
       })
     }),
-    // verify user
+    // verify customer account
     verifyUser: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/auth/verify-account?verify_code=" + data.token,
+        url: "/customers/verify-account?verify_code=" + data.token,
         method: "POST",
         body: data
       })
     }),
-    // resend verify user
+    // resend verify code
     resendVerifyUser: builder.mutation({
       query: (data) => ({
-        url: "/auth/resend-verify",
+        url: "/customers/resend-verify-account",
         method: "POST",
         body: data
       })
     }),
-    // login user
+    // login customer
     login: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/auth/login",
+        url: "/customers/login",
         method: "POST",
         body: data
       })
     }),
-    // logout user
+    // logout customer
     logout: builder.mutation<any, void>({
       query: () => ({
-        url: "/auth/logout",
+        url: "/customers/logout",
         method: "POST"
       })
     }),
-    // get user
+    // get customer profile
     getUser: builder.query<any, void>({
       query: () => ({
-        url: "/auth/get-user",
+        url: "/customers/me",
         method: "GET"
       })
     }),
     // refresh token
     refreshToken: builder.mutation<any, void>({
       query: () => ({
-        url: "/auth/refresh-token",
+        url: "/customers/refresh-token",
         method: "POST"
       })
     }),
     // forgot password
     forgotPassword: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/auth/forgot-password",
+        url: "/customers/forgot-password",
         method: "POST",
         body: data
       })
@@ -79,9 +69,15 @@ export const authService = createApi({
     // reset password
     resetPassword: builder.mutation<any, any>({
       query: (data) => ({
-        url: "/auth/reset-password",
+        url: "/customers/reset-password",
         method: "POST",
-        body: data
+        body: {
+          code: data.code || data.verify_code || data.verify_token,
+          new_password: data.new_password || data.password,
+          confirm_new_password:
+            data.confirm_new_password || data.retryPassword || data.retry_password,
+          ...data
+        }
       })
     })
   })
@@ -97,4 +93,4 @@ export const {
   useRefreshTokenMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation
-} = authService;
+} = customerService;

@@ -9,16 +9,16 @@ export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Get token from cookies
-  const token = request.cookies.get("travel_token")?.value;
+  const token = request.cookies.get("customer_token")?.value;
 
   // Define auth pages that logged-in users should not access
   const authPages = ["/login", "/register"];
 
   // Define protected pages that guest users should not access
-  const protectedPages = ["/my-bookings", "/profile", "/payments", "/orders"];
+  const protectedPages = ["/my-bookings", "/profile", "/payments", "/orders", "/itineraries"];
 
   // Get current locale
-  const localeMatch = pathname.match(/^\/(en|id)/);
+  const localeMatch = pathname.match(/^\/(en|id|tr)/);
   const locale = localeMatch ? localeMatch[1] : routing.defaultLocale;
 
   // Check if current path is an auth page (accounting for locale prefix)

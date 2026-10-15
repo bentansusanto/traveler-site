@@ -3,6 +3,7 @@
 import Icon from "@/components/icon";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { MotorItemRow } from "@/components/ui/motor-item-row";
 import { useGetAllTourQuery } from "@/store/services/book-tour.service";
 import { useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
@@ -12,7 +13,7 @@ import { ChevronDown, ChevronLeft } from "lucide-react";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 
 interface MobilePaymentPageProps {
@@ -139,6 +140,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
   const [showTravelers, setShowTravelers] = useState(false);
   const [createPayment, { isLoading: isCreatingPayment }] = useCreatePaymentMutation();
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const currentCurrency = useSelector(
     (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
@@ -147,7 +149,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
   const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
 
   const displayPrice = useMemo(() => {
-    if (selectedCurrency === "USD") {
+    if (selectedCurrency !== "USD") {
       return totalPrice * idrToUsdRate;
     }
     return totalPrice;
@@ -158,10 +160,15 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
     setPaymentError(null);
 
     try {
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
+
       const paymentData: any = {
         payment_method: "paypal",
         currency: "IDR",
-        exchange_rate: idrToUsdRate
+        exchange_rate: idrToUsdRate,
+        idempotency_key: idempotencyKeyRef.current,
       };
 
       if (isMotor) {
@@ -178,6 +185,9 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
         setPaymentError("Gagal mendapatkan URL pembayaran. Silakan coba lagi.");
       }
     } catch (error: any) {
+      if (typeof error?.status === "number") {
+        idempotencyKeyRef.current = null;
+      }
       if (error?.data?.message) {
         setPaymentError(error.data.message);
       } else {
@@ -221,7 +231,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Mobile Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3 shadow-sm">
-        <button onClick={() => router.back()} className="p-1">
+        <button onClick={() => router.push(`/${locale}/my-bookings`)} className="p-1">
           <ChevronLeft className="h-6 w-6 text-gray-700" />
         </button>
         <h1 className="text-lg font-bold text-gray-900">Checkout</h1>
@@ -239,11 +249,13 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
                 <span className="text-xs text-blue-600 font-medium">#{booking.id}</span>
               </div>
               <div className="space-y-2">
-                {(booking.book_motor_items || []).map((item: any) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{item.motor_name}</span>
-                    <span className="font-medium">{item.qty} unit</span>
-                  </div>
+                {(booking.book_motor_items || []).map((item: any, idx: number) => (
+                  <MotorItemRow
+                    key={item.id || idx}
+                    motorId={item.motor_id || item.motor?.id}
+                    qty={item.qty}
+                    variant="compact"
+                  />
                 ))}
               </div>
               <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-500">
@@ -328,7 +340,7 @@ export const MobilePaymentPage = ({ orderId }: MobilePaymentPageProps) => {
                 <div key={addon.id} className="flex justify-between text-sm">
                   <span className="text-gray-600">{addon.name}</span>
                   <span className="font-medium text-blue-600">
-                    {formatCurrency(selectedCurrency === "USD" ? addon.price * idrToUsdRate : addon.price)}
+                    {formatCurrency(selectedCurrency !== "USD" ? addon.price * idrToUsdRate : addon.price)}
                   </span>
                 </div>
               ))}

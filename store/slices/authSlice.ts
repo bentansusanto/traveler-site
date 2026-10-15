@@ -8,9 +8,9 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
-  isLoggedIn: !!Cookies.get("travel_token"),
+  isLoggedIn: !!Cookies.get("customer_token"),
   userName: null,
-  token: Cookies.get("travel_token") || null
+  token: Cookies.get("customer_token") || null
 };
 
 const authSlice = createSlice({

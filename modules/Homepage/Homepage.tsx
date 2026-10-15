@@ -3,6 +3,7 @@ import { DestinationSection } from "./Section/DestinationSection";
 import { HeroSection } from "./Section/HeroSection";
 import { PopularDestination } from "./Section/PopularDestination";
 import { WhyChooseUs } from "./Section/WhyChooseUs";
+import { CallToAction } from "./Section/CallToAction";
 
 export const Homepage = () => {
   return (
@@ -11,6 +12,7 @@ export const Homepage = () => {
       <PopularDestination />
       <DestinationSection />
       <WhyChooseUs />
+      <CallToAction />
     </>
   );
 };

@@ -10,7 +10,11 @@ export const registerSchema = z.object({
       /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
       "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character"
     ),
+  confirmPassword: z.string(),
   site: z.string().optional()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
 });
 
 export type RegisterSchema = z.infer<typeof registerSchema>;
@@ -18,5 +22,6 @@ export type RegisterSchema = z.infer<typeof registerSchema>;
 export const initialRegisterValues = {
   name: "",
   email: "",
-  password: ""
+  password: "",
+  confirmPassword: ""
 };

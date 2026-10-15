@@ -1,4 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export interface MotorTranslation {
   id?: string;
@@ -46,9 +47,26 @@ export interface Merek {
   name_merek: string;
 }
 
+export interface FilterMotorQuery {
+  page?: number;
+  limit?: number;
+  merek_id?: string;
+  state_id?: string;
+  country_id?: string;
+  is_available?: boolean;
+  search?: string;
+}
+
 export interface MotorsResponse {
   message: string;
   data: Motor[];
+  datas?: Motor[];
+  meta?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPage: number;
+  };
 }
 
 export interface SingleMotorResponse {
@@ -59,32 +77,49 @@ export interface SingleMotorResponse {
 export interface MereksResponse {
   message: string;
   data: Merek[];
+  datas?: Merek[];
 }
 
 export const motorService = createApi({
   reducerPath: "motorService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    credentials: "include"
-  }),
+  baseQuery: baseQueryWithReauth,
+  tagTypes: ["Motors", "Mereks"],
   endpoints: (builder) => ({
-    findAllMotors: builder.query<MotorsResponse, void>({
-      query: () => ({
-        url: "/motors/find-all",
-        method: "GET"
-      })
+    findAllMotors: builder.query<MotorsResponse, FilterMotorQuery | void>({
+      query: (params) => ({
+        url: "/motors",
+        method: "GET",
+        params: params || undefined
+      }),
+      providesTags: ["Motors"]
     }),
     findMotorById: builder.query<SingleMotorResponse, string>({
       query: (id) => ({
         url: `/motors/${id}`,
         method: "GET"
-      })
+      }),
+      providesTags: (result, error, id) => [{ type: "Motors", id }]
+    }),
+    findMotorBySlug: builder.query<SingleMotorResponse, string>({
+      query: (slug) => ({
+        url: `/motors/slug/${slug}`,
+        method: "GET"
+      }),
+      providesTags: (result, error, slug) => [{ type: "Motors", id: slug }]
     }),
     findAllMereks: builder.query<MereksResponse, void>({
       query: () => ({
-        url: "/mereks/find-all",
+        url: "/mereks",
         method: "GET"
-      })
+      }),
+      providesTags: ["Mereks"]
+    }),
+    findMerekById: builder.query<{ message: string; data: Merek }, string>({
+      query: (id) => ({
+        url: `/mereks/${id}`,
+        method: "GET"
+      }),
+      providesTags: (result, error, id) => [{ type: "Mereks", id }]
     })
   })
 });
@@ -92,5 +127,7 @@ export const motorService = createApi({
 export const {
   useFindAllMotorsQuery,
   useFindMotorByIdQuery,
-  useFindAllMereksQuery
+  useFindMotorBySlugQuery,
+  useFindAllMereksQuery,
+  useFindMerekByIdQuery
 } = motorService;

@@ -1,15 +1,13 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export const locationService = createApi({
   reducerPath: "locationService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    credentials: "include"
-  }),
+  baseQuery: baseQueryWithReauth,
   endpoints: (builder) => ({
     findAllLocation: builder.query<any, void>({
       query: () => ({
-        url: "/countries/find-all",
+        url: "/locations",
         method: "GET"
       })
     })

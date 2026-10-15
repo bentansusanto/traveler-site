@@ -1,11 +1,14 @@
 "use client";
 
-import { useResendVerifyUserMutation, useVerifyUserMutation } from "@/store/services/auth.service";
+import { useTranslations } from "next-intl";
+import { extractAuthErrorMessage } from "@/lib/auth-errors";
+import { useResendVerifyUserMutation, useVerifyUserMutation } from "@/store/services/customer.service";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 export const HooksVerifyAccount = () => {
   const searchParams = useSearchParams();
+  const t = useTranslations("Auth");
   const verifyToken = searchParams.get("verify_token");
   const [verifyUser] = useVerifyUserMutation();
   const [resendVerifyUser, { isLoading: isResending }] = useResendVerifyUserMutation();
@@ -41,15 +44,15 @@ export const HooksVerifyAccount = () => {
       await verifyUser({ token: verifyToken }).unwrap();
       setStatus({
         type: "success",
-        message: "Your account has been successfully verified! You can now log in."
+        message: t("verificationSuccess")
       });
     } catch (err: any) {
       setStatus({
         type: "error",
-        message: err?.data?.message || "Verification failed. The link may be invalid or expired."
+        message: extractAuthErrorMessage(err, t) || t("verificationFailed")
       });
     }
-  }, [verifyToken, verifyUser]);
+  }, [verifyToken, verifyUser, t]);
 
   const handleResend = async () => {
     if (!storedEmail) return;

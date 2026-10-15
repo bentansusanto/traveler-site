@@ -5,10 +5,18 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Toaster } from "sonner";
+import { Metadata } from "next";
+import { generateMeta } from "@/lib/utils";
 import "../globals.css";
 import MaintenancePage from "./(guest)/maintenance/page";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = generateMeta({
+  title: "PacificTravelindo - Best Travel Agency",
+  description: "Let's travel together with PacificTravelindo, the best travel agency in Indonesia",
+  keywords: ["travel", "pacifictravelindo", "tour", "sewa motor", "holiday"]
+});
 
 export function generateStaticParams() {
   return [{ locale: "en" }, { locale: "id" }];
@@ -37,7 +45,7 @@ export default async function RootLayout({
   if (isMaintenance) {
     return (
       <html lang={locale} suppressHydrationWarning>
-        <body className={inter.className}>
+        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
           <MaintenancePage />
         </body>
       </html>
@@ -46,7 +54,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ReduxProvider>
             {children}

@@ -8,7 +8,7 @@ const footerLinks = {
     { name: "Car Rental", href: "/car-rental" },
     { name: "Flights", href: "/flights" },
     { name: "Hotel", href: "/hotel" },
-    { name: "Documents & Visa", href: "/documents" },
+    { name: "Documents & Visa", href: "/documents-visa" },
     { name: "Bus & Shuttle", href: "/bus-shuttle" }
   ],
   company: [

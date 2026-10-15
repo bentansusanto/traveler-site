@@ -1,11 +1,14 @@
 "use client";
-import { useRegisterMutation } from "@/store/services/auth.service";
+import { useRegisterMutation } from "@/store/services/customer.service";
 import { useFormik } from "formik";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { extractAuthErrorMessage } from "@/lib/auth-errors";
 import { initialRegisterValues, registerSchema } from "./schema";
 
 export const HookRegister = () => {
   const [register, { isLoading }] = useRegisterMutation();
+  const t = useTranslations("Auth");
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -33,15 +36,15 @@ export const HookRegister = () => {
         localStorage.setItem("travel_verify_email", values.email);
         setStatusMessage({
           type: "success",
-          text: "Registration successful! PLease login."
+          text: t("registrationSuccess")
         });
         formik.resetForm();
       } catch (err: any) {
+        console.warn("Registration rejected:", err?.data || err?.message);
         setStatusMessage({
           type: "error",
-          text: err?.data?.message || "Registration failed. Please try again."
+          text: extractAuthErrorMessage(err, t) || t("registrationFailed")
         });
-        console.error("Registration failed", err);
       }
     }
   });

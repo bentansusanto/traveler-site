@@ -1,86 +1,73 @@
 "use client";
 
-import Icon from "@/components/icon";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Award, CalendarCheck, Layers, Route, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 
 export const WhyChooseUs = () => {
-  const isMobile = useIsMobile();
   const t = useTranslations("WhyChooseUs");
 
   const features = [
-    t("features.allInOne"),
-    t("features.professional"),
-    t("features.multiTrip"),
-    t("features.flexible")
+    {
+      title: t("features.allInOne"),
+      desc: t("features.allInOneDesc"),
+      icon: Layers
+    },
+    {
+      title: t("features.professional"),
+      desc: t("features.professionalDesc"),
+      icon: Award
+    },
+    {
+      title: t("features.multiTrip"),
+      desc: t("features.multiTripDesc"),
+      icon: Route
+    },
+    {
+      title: t("features.flexible"),
+      desc: t("features.flexibleDesc"),
+      icon: CalendarCheck
+    }
   ];
 
   return (
-    <div className="mt-3 bg-white px-5 py-5 md:mt-20 md:bg-transparent md:px-8 lg:mx-auto lg:max-w-5xl lg:px-0 xl:max-w-[1400px]">
-      <div className="flex flex-col items-center gap-8 md:flex-row md:gap-12 lg:gap-16">
-        {/* Left Side - Illustration (Desktop Only) */}
-        {!isMobile && (
-          <div className="relative w-full md:w-1/2">
-            <Image
-              src="/images/image-why-choose-us.png"
-              alt="Why Choose Us Illustration"
-              width={500}
-              height={400}
-              className="h-auto w-full"
-              priority
-            />
+    <section className="w-full bg-slate-50/70 border-y border-slate-200/60 py-14 sm:py-18 md:py-24">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="mx-auto max-w-2xl text-center space-y-3">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3.5 py-1 text-xs font-bold text-orange-600 border border-orange-200/80 uppercase tracking-wider">
+            <ShieldCheck className="h-3.5 w-3.5 text-orange-500" />
+            <span>{t("sectionTag")}</span>
           </div>
-        )}
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+            {t("title")}
+          </h2>
+          <p className="text-sm sm:text-base md:text-lg text-slate-500 font-normal leading-relaxed">
+            {t("description")}
+          </p>
+        </div>
 
-        {/* Right Side - Content */}
-        <div className="w-full md:w-1/2">
-          {/* Title Section */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-orange-500 md:text-base">
-              {t("sectionTag")}
-            </h3>
-            <h2 className="text-xl leading-tight font-bold text-gray-900 md:text-3xl lg:text-4xl">
-              {t("title")}
-            </h2>
-
-            {/* Image for Mobile - Between Title and Description */}
-            {isMobile && (
-              <div className="relative w-full py-4">
-                <Image
-                  src="/images/image-why-choose-us.png"
-                  alt="Why Choose Us Illustration"
-                  width={500}
-                  height={400}
-                  className="h-auto w-full"
-                  priority
-                />
-              </div>
-            )}
-
-            <p className="text-sm text-gray-500 md:text-base">{t("description")}</p>
-          </div>
-
-          {/* Features List */}
-          <div className="mt-6 space-y-3 md:mt-8">
-            {features.map((feature, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <div className="flex size-5 flex-shrink-0 items-center justify-center rounded-full bg-green-500 md:size-6">
-                  <Icon name="Check" className="size-3 text-white md:size-4" />
+        {/* Features Grid */}
+        <div className="mt-12 sm:mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature, idx) => {
+            const IconComp = feature.icon;
+            return (
+              <div
+                key={idx}
+                className="group relative flex flex-col items-center text-center rounded-3xl bg-white p-6 sm:p-8 border border-slate-200/80 shadow-xs hover:border-blue-300 hover:shadow-xl hover:shadow-blue-600/5 hover:-translate-y-1.5 transition-all duration-300">
+                <div className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-105 shadow-xs">
+                  <IconComp className="size-6 sm:size-7" />
                 </div>
-                <span className="text-sm font-medium text-gray-800 md:text-base">{feature}</span>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-normal">
+                  {feature.desc}
+                </p>
               </div>
-            ))}
-          </div>
-
-          {/* Book Now Button */}
-          <div className="mt-6 hidden md:mt-8 md:block">
-            <button className="rounded-lg bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-600 md:px-8 md:text-base">
-              {t("bookNow")}
-            </button>
-          </div>
+            );
+          })}
         </div>
       </div>
-    </div>
+    </section>
   );
 };

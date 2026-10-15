@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
+import { MotorItemRow, useMotorSummary } from "@/components/ui/motor-item-row";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,15 +29,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLogout } from "@/hooks/useLogout";
 import { cn } from "@/lib/utils";
-import { useGetUserQuery } from "@/store/services/auth.service";
+import { useGetUserQuery } from "@/store/services/customer.service";
 import {
   useFindTourByIdQuery,
   useGetAllTourQuery,
   useUpdateStatusTourMutation
 } from "@/store/services/book-tour.service";
+import { useGetItineraryByIdQuery } from "@/store/services/itinerary.service";
 import { useUpdateStatusMotorMutation, useFindBookMotorByIdQuery, useFindAllBookMotorsQuery } from "@/store/services/book-motor.service";
 import { useFindDestinationIdQuery } from "@/store/services/destination.service";
 import { useCancelPaymentMutation, useFindAllPaymentQuery } from "@/store/services/payment.service";
+import {
+  useFindBookEntertainmentAttractionByIdQuery,
+  useFindAllBookEntertainmentAttractionsQuery,
+  useCancelBookingMutation
+} from "@/store/services/book-entertainment-attraction.service";
+import {
+  useFindAllBookDocumentVisasQuery,
+  useFindBookDocumentVisaByIdQuery,
+  useCancelBookDocumentVisaMutation
+} from "@/store/services/book-document-visa.service";
+import { useFindAllBookersQuery } from "@/store/services/booker.service";
 import {
   useCreateProfileMutation,
   useGetProfileQuery,
@@ -50,25 +64,44 @@ import {
 import { useFormik } from "formik";
 import Cookies from "js-cookie";
 import {
+  ArrowRight,
+  Bike,
+  Calendar,
+  ChevronDown,
   ChevronRight,
+  CreditCard,
+  Eye,
+  FileText,
   Gift,
   Globe,
   Headphones,
+  Heart,
   Info,
+  Loader2,
   LogOut,
+  MapPin,
+  Receipt,
   Settings,
+  Sparkles,
   Ticket,
+  Trash2,
   User,
-  Wallet
+  Users,
+  Wallet,
+  XCircle
 } from "lucide-react";
-import { useLocale } from "next-intl";
+import { usePathname, useRouter } from "@/lib/languages/routing";
+import { useSearchParams } from "next/navigation";
+import { setCurrency } from "@/store/slices/currencySlice";
+import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "sonner";
-import { orderTourSchema } from "../Tourist/OrderTour/schema";
+import { orderTourSchema } from "../Booking/BookingTour/schema";
 import { ProfileFormValues, profileSchema } from "./schema";
+import { BookTourDetail } from "../Booking/BookingTour/BookTourDetail";
 
 import {
   Drawer,
@@ -80,7 +113,20 @@ import {
 
 export const ProfilePage = () => {
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState("account");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(
+    tabParam && ["account", "my-booking", "orders", "tickets", "settings"].includes(tabParam)
+      ? tabParam
+      : "account"
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["account", "my-booking", "orders", "tickets", "settings"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Check if user is logged in from cookie
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -99,7 +145,7 @@ export const ProfilePage = () => {
   const userEmail = userData?.data?.email || "";
 
   useEffect(() => {
-    const token = Cookies.get("travel_token");
+    const token = Cookies.get("customer_token");
     setIsLoggedIn(!!token);
   }, []);
 
@@ -139,6 +185,18 @@ const MobileProfileView = ({
   userEmail: string;
   isLoading?: boolean;
 }) => {
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const dispatch = useDispatch();
+  const currentCurrency = useSelector((state: any) => state.currency || { code: "IDR" });
+
+  const [isLanguageDrawerOpen, setIsLanguageDrawerOpen] = useState(false);
+  const [isCurrencyDrawerOpen, setIsCurrencyDrawerOpen] = useState(false);
+
+  const currentLanguageLabel =
+    locale === "en" ? "English" : locale === "tr" ? "Türkçe" : "Bahasa Indonesia";
+
   const { handleLogout, isLoading: isLoggingOut } = useLogout();
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
 
@@ -241,137 +299,265 @@ const MobileProfileView = ({
   // If not logged in, show different layout
   if (!isLoggedIn) {
     return (
-      <>
-        <div className="min-h-screen bg-gray-50 pb-20">
-          {/* Blue Gradient Header */}
-          <div className="relative h-40 bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-8">
+      <div className="flex h-dvh flex-col overflow-hidden bg-gray-50 pb-16">
+        {/* Fixed Top Section: Greeting & Benefit Cards */}
+        <div className="shrink-0">
+          <div className="relative bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-8 pb-14">
             <h1 className="text-2xl font-bold text-white">Welcome to Pacific Travelindo</h1>
           </div>
 
-          <div className="relative -mt-20 space-y-4 px-4 pb-8">
+          <div className="relative -mt-10 space-y-3 px-4">
             {/* Login/Register Card */}
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="text-4xl">🎁</div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-start gap-3">
+                <div className="text-3xl">🎁</div>
                 <div>
-                  <h3 className="mb-1 font-semibold text-gray-900">Ada banyak diskon buatmu!</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="mb-0.5 text-sm font-semibold text-gray-900">Ada banyak diskon buatmu!</h3>
+                  <p className="text-xs text-gray-600">
                     Log in atau daftar untuk menikmati diskon dan penawaran khusus.
                   </p>
                 </div>
               </div>
               <Link href="/login" className="block">
-                <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
+                <Button className="w-full bg-blue-600 text-white hover:bg-blue-700 h-9 text-sm">
                   Log in atau daftar
                 </Button>
               </Link>
             </div>
 
             {/* Rewards Card */}
-            <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-5 shadow-sm">
+            <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-4 shadow-sm text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="mb-1 font-semibold text-white">Lihat benefit buatmu di sini</h3>
-                  <p className="text-sm text-white/90">
+                  <h3 className="mb-0.5 text-sm font-semibold">Lihat benefit buatmu di sini</h3>
+                  <p className="text-xs text-white/90">
                     Cek penawaran dari Pacific Travelindo Rewards!
                   </p>
                 </div>
-                <div className="text-3xl">💰</div>
+                <div className="text-2xl">💰</div>
               </div>
-            </div>
-
-            {/* Customer Care 24/7 */}
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-bold text-gray-900">Customer Care</h2>
-              <div className="space-y-3">
-                <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                      <Headphones className="h-5 w-5 text-gray-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">Pusat Bantuan</p>
-                      <span className="inline-block rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                        Baru
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-
-            {/* Pengaturan */}
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-bold text-gray-900">Pengaturan</h2>
-              <div className="space-y-3">
-                <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-5 w-5 text-gray-600" />
-                    <p className="font-medium text-gray-900">Bahasa</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">Indonesia</span>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
-                  </div>
-                </button>
-                <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <Wallet className="h-5 w-5 text-gray-600" />
-                    <p className="font-medium text-gray-900">Mata Uang</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">IDR</span>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Lainnya */}
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-bold text-gray-900">Lainnya</h2>
-              <button className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Info className="h-5 w-5 text-gray-600" />
-                  <p className="font-medium text-gray-900">Tentang Pacific Travelindo</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-              </button>
             </div>
           </div>
         </div>
 
+        {/* Scrollable Menus Section */}
+        <div className="flex-1 overflow-y-auto px-4 pt-3 pb-6 space-y-3">
+          {/* Favorit / Wishlist Section */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Aktivitas & Favorit</h2>
+            <div className="space-y-1">
+              <Link
+                href="/login"
+                className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-red-50 p-2 text-red-500">
+                    <Heart className="h-4 w-4 fill-red-500/20" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-gray-900">Wishlist Destinasi</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Customer Care 24/7 */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Customer Care</h2>
+            <div className="space-y-1">
+              <button className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+                    <Headphones className="h-4 w-4 text-gray-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm text-gray-900">Pusat Bantuan</p>
+                    <span className="inline-block rounded bg-red-600 px-1.5 py-0.2 text-[9px] font-bold text-white">
+                      Baru
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Pengaturan */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Pengaturan</h2>
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsLanguageDrawerOpen(true)}
+                className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-4 w-4 text-gray-600" />
+                  <p className="font-medium text-sm text-gray-900">Bahasa</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">{currentLanguageLabel}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </button>
+              <button
+                onClick={() => setIsCurrencyDrawerOpen(true)}
+                className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Wallet className="h-4 w-4 text-gray-600" />
+                  <p className="font-medium text-sm text-gray-900">Mata Uang</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">{currentCurrency.code}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Lainnya */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Lainnya</h2>
+            <button className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <Info className="h-4 w-4 text-gray-600" />
+                <p className="font-medium text-sm text-gray-900">Tentang Pacific Travelindo</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Language Selection Drawer */}
+        <Drawer open={isLanguageDrawerOpen} onOpenChange={setIsLanguageDrawerOpen}>
+          <DrawerContent className="rounded-t-[24px] border-none p-0 pb-6">
+            <DrawerHeader className="relative flex items-center justify-center border-b p-4">
+              <DrawerTitle className="text-center text-base font-bold text-gray-900">
+                Pilihan Bahasa
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="flex flex-col py-2">
+              {[
+                { code: "id", label: "Bahasa Indonesia", flag: "🇮🇩" },
+                { code: "en", label: "English", flag: "🇺🇸" },
+                { code: "tr", label: "Türkçe", flag: "🇹🇷" }
+              ].map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    const curr = lang.code === "id" ? "IDR" : lang.code === "tr" ? "TRY" : "USD";
+                    dispatch(setCurrency(curr));
+                    router.replace(pathname, { locale: lang.code });
+                    setIsLanguageDrawerOpen(false);
+                  }}
+                  className="flex items-center justify-between px-6 py-3.5 transition-colors active:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{lang.flag}</span>
+                    <span
+                      className={cn(
+                        "text-sm font-medium",
+                        locale === lang.code ? "text-blue-600 font-semibold" : "text-gray-700"
+                      )}>
+                      {lang.label}
+                    </span>
+                  </div>
+                  <div
+                    className={cn(
+                      "flex size-5 items-center justify-center rounded-full border-2",
+                      locale === lang.code
+                        ? "border-blue-600 bg-blue-600"
+                        : "border-gray-300"
+                    )}>
+                    {locale === lang.code && (
+                      <div className="size-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Currency Selection Drawer */}
+        <Drawer open={isCurrencyDrawerOpen} onOpenChange={setIsCurrencyDrawerOpen}>
+          <DrawerContent className="rounded-t-[24px] border-none p-0 pb-6">
+            <DrawerHeader className="relative flex items-center justify-center border-b p-4">
+              <DrawerTitle className="text-center text-base font-bold text-gray-900">
+                Pilihan Mata Uang
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="flex flex-col py-2">
+              {[
+                { code: "IDR", label: "Rupiah Indonesia", symbol: "Rp" },
+                { code: "USD", label: "US Dollar", symbol: "US$" },
+                { code: "TRY", label: "Turkish Lira", symbol: "₺" }
+              ].map((curr) => (
+                <button
+                  key={curr.code}
+                  onClick={() => {
+                    dispatch(setCurrency(curr.code));
+                    setIsCurrencyDrawerOpen(false);
+                  }}
+                  className="flex items-center justify-between px-6 py-3.5 transition-colors active:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600">
+                      {curr.symbol}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm font-medium",
+                        currentCurrency.code === curr.code ? "text-blue-600 font-semibold" : "text-gray-700"
+                      )}>
+                      {curr.label} ({curr.code})
+                    </span>
+                  </div>
+                  <div
+                    className={cn(
+                      "flex size-5 items-center justify-center rounded-full border-2",
+                      currentCurrency.code === curr.code
+                        ? "border-blue-600 bg-blue-600"
+                        : "border-gray-300"
+                    )}>
+                    {currentCurrency.code === curr.code && (
+                      <div className="size-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DrawerContent>
+        </Drawer>
+
         {/* Mobile Bottom Navbar */}
         <MobileBottomNavbar />
-      </>
+      </div>
     );
   }
 
-  // If logged in, show original layout
+  // If logged in, show layout with fixed header & benefits card, scrollable menu list
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f8f9fa] pb-16">
+      {/* Non-scrolling Top Section (Greeting, User Profile Card, Benefits Card) */}
+      <div className="shrink-0">
         {/* Blue Gradient Header */}
-        <div className="relative h-40 bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-8">
+        <div className="relative bg-linear-to-br from-blue-500 to-blue-600 px-5 pt-7 pb-14">
           <h1 className="text-2xl font-bold text-white">Hi, {userName}</h1>
         </div>
 
-        <div className="relative -mt-20 space-y-4 px-4 pb-8">
+        <div className="relative -mt-10 space-y-3 px-4">
           {/* User Info Card */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
             {isLoading ? (
               // Loading skeleton
               <div className="flex animate-pulse items-center gap-4">
-                <div className="h-16 w-16 shrink-0 rounded-full bg-gray-200"></div>
+                <div className="h-14 w-14 shrink-0 rounded-full bg-gray-200"></div>
                 <div className="flex-1 space-y-2">
                   <div className="h-4 w-32 rounded bg-gray-200"></div>
                   <div className="h-3 w-48 rounded bg-gray-200"></div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-4">
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full">
+              <div className="flex items-center gap-3.5">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full">
                   <Image
                     src={`/images/avatars/${Math.abs(userName.charCodeAt(0) % 12) + 1}.png`}
                     alt={userName}
@@ -379,288 +565,393 @@ const MobileProfileView = ({
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{userName}</h3>
-                  <p className="text-sm text-gray-500">{userEmail}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">{userName}</h3>
+                  <p className="text-xs text-gray-500 truncate">{userEmail}</p>
                 </div>
               </div>
             )}
           </div>
 
           {/* Benefits Card */}
-          <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-5 text-white">
+          <div className="rounded-2xl bg-linear-to-r from-teal-400 to-blue-400 p-4 text-white shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="mb-1 font-semibold">Lihat benefit buatmu di sini</h3>
-                <p className="text-sm opacity-90">Cek penawaran dari Pacific Tiket Rewards!</p>
+                <h3 className="mb-0.5 text-sm font-semibold">Lihat benefit buatmu di sini</h3>
+                <p className="text-xs opacity-90">Cek penawaran dari Pacific Tiket Rewards!</p>
               </div>
-              <Gift className="h-12 w-12 opacity-80" />
+              <Gift className="h-9 w-9 opacity-80 shrink-0" />
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Customer Care Section */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="mb-4 font-semibold text-gray-900">Customer Care</h3>
-            <div className="space-y-3">
-              <Link
-                href="#"
-                className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-gray-100 p-2">
-                    <Headphones className="h-5 w-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Pusat Bantuan</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-              </Link>
-              {/* Settings Account */}
-              <div>
-                <button
-                  onClick={() => setIsAccountSettingsOpen(true)}
-                  className="flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-full bg-gray-100 p-2">
-                      <Settings className="h-5 w-5 text-gray-600" />
-                    </div>
-                    <p className="font-medium text-gray-900">Pengaturan Akun</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Settings Section */}
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="mb-4 font-semibold text-gray-900">Pengaturan</h3>
-            <div className="space-y-3">
-              <Link
-                href="#"
-                className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-5 w-5 text-gray-600" />
-                  <p className="font-medium text-gray-900">Bahasa</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Indonesia</span>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                </div>
-              </Link>
-              <Link
-                href="#"
-                className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Wallet className="h-5 w-5 text-gray-600" />
-                  <p className="font-medium text-gray-900">Mata Uang</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">IDR</span>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* About Section */}
-          {/* <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h3 className="mb-4 font-semibold text-gray-900">Lainnya</h3>
+      {/* Scrollable Menus Section */}
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-6 space-y-3">
+        {/* Favorit / Wishlist Section */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Aktivitas & Favorit</h3>
+          <div className="space-y-1">
             <Link
-              href="#"
-              className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50">
+              href="/wishlist"
+              className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
               <div className="flex items-center gap-3">
-                <Info className="h-5 w-5 text-gray-600" />
-                <p className="font-medium text-gray-900">Tentang tiket.com</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
-            </Link>
-          </div> */}
-
-          {/* Logout Section - Only show when logged in */}
-          {isLoggedIn && (
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="flex w-full items-center justify-between rounded-lg p-3 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50">
-                <div className="flex items-center gap-3">
-                  <LogOut className="h-5 w-5" />
-                  <p className="font-medium">{isLoggingOut ? "Logging out..." : "Keluar Akun"}</p>
+                <div className="rounded-full bg-red-50 p-2 text-red-500">
+                  <Heart className="h-4 w-4 fill-red-500/20" />
                 </div>
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          )}
+                <div>
+                  <p className="font-medium text-sm text-gray-900">Wishlist Destinasi</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </Link>
+          </div>
         </div>
 
-        {/* Account Settings Drawer */}
-        <Drawer open={isAccountSettingsOpen} onOpenChange={setIsAccountSettingsOpen}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Informasi Akun</DrawerTitle>
-              <DrawerDescription>
-                {isEditing ? "Edit informasi profil Anda" : "Lihat informasi profil Anda"}
-              </DrawerDescription>
-            </DrawerHeader>
-
-            <form onSubmit={formik.handleSubmit} className="px-4 pb-4">
-              <div className="space-y-4">
-                {/* Full Name - Read Only */}
-                <div>
-                  <Label htmlFor="mobile-fullName" className="text-sm font-medium text-gray-700">
-                    Nama Lengkap
-                  </Label>
-                  <Input
-                    id="mobile-fullName"
-                    value={userName || ""}
-                    disabled
-                    className="mt-1 bg-gray-50"
-                  />
+        {/* Customer Care Section */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Customer Care</h3>
+          <div className="space-y-1">
+            <Link
+              href="#"
+              className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-gray-100 p-2">
+                  <Headphones className="h-4 w-4 text-gray-600" />
                 </div>
-
-                {/* Email - Read Only */}
-                <div>
-                  <Label htmlFor="mobile-email" className="text-sm font-medium text-gray-700">
-                    Email
-                  </Label>
-                  <Input
-                    id="mobile-email"
-                    type="email"
-                    value={userEmail || ""}
-                    disabled
-                    className="mt-1 bg-gray-50"
-                  />
+                <p className="font-medium text-sm text-gray-900">Pusat Bantuan</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </Link>
+            {/* Settings Account */}
+            <button
+              onClick={() => setIsAccountSettingsOpen(true)}
+              className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-gray-100 p-2">
+                  <Settings className="h-4 w-4 text-gray-600" />
                 </div>
+                <p className="font-medium text-sm text-gray-900">Pengaturan Akun</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
 
-                {/* Address */}
-                <div>
-                  <Label htmlFor="mobile-address" className="text-sm font-medium text-gray-700">
-                    Address
-                  </Label>
-                  <Textarea
-                    id="mobile-address"
-                    name="address"
-                    value={formik.values.address}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={!isEditing}
-                    className={`mt-1 text-sm ${!isEditing ? "bg-gray-50" : ""}`}
-                  />
-                  {formik.touched.address && formik.errors.address && (
-                    <p className="mt-1 text-sm text-red-600">{formik.errors.address}</p>
-                  )}
-                </div>
+        {/* Settings Section */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Pengaturan</h3>
+          <div className="space-y-1">
+            <button
+              onClick={() => setIsLanguageDrawerOpen(true)}
+              className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <Globe className="h-4 w-4 text-gray-600" />
+                <p className="font-medium text-sm text-gray-900">Bahasa</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{currentLanguageLabel}</span>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </div>
+            </button>
+            <button
+              onClick={() => setIsCurrencyDrawerOpen(true)}
+              className="flex w-full items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <Wallet className="h-4 w-4 text-gray-600" />
+                <p className="font-medium text-sm text-gray-900">Mata Uang</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">{currentCurrency.code}</span>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </div>
+            </button>
+          </div>
+        </div>
 
-                {/* Phone Number */}
-                <div>
-                  <Label
-                    htmlFor="mobile-phone_number"
-                    className="text-sm font-medium text-gray-700">
-                    No. Handphone
-                  </Label>
-                  <Input
-                    id="mobile-phone_number"
-                    name="phone_number"
-                    value={formik.values.phone_number}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={!isEditing}
-                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
-                  />
-                  {formik.touched.phone_number && formik.errors.phone_number && (
-                    <p className="mt-1 text-sm text-red-600">{formik.errors.phone_number}</p>
-                  )}
-                </div>
+        {/* Logout Section - Only show when logged in */}
+        {isLoggedIn && (
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex w-full items-center justify-between rounded-lg p-2.5 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50">
+              <div className="flex items-center gap-3">
+                <LogOut className="h-4 w-4 text-red-600" />
+                <p className="font-medium text-sm">{isLoggingOut ? "Logging out..." : "Keluar Akun"}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-red-600" />
+            </button>
+          </div>
+        )}
+      </div>
 
-                {/* State */}
-                <div>
-                  <Label htmlFor="mobile-state" className="text-sm font-medium text-gray-700">
-                    State
-                  </Label>
-                  <Input
-                    id="mobile-state"
-                    name="state"
-                    value={formik.values.state}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={!isEditing}
-                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
-                  />
-                  {formik.touched.state && formik.errors.state && (
-                    <p className="mt-1 text-sm text-red-600">{formik.errors.state}</p>
-                  )}
-                </div>
+      {/* Account Settings Drawer */}
+      <Drawer open={isAccountSettingsOpen} onOpenChange={setIsAccountSettingsOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Informasi Akun</DrawerTitle>
+            <DrawerDescription>
+              {isEditing ? "Edit informasi profil Anda" : "Lihat informasi profil Anda"}
+            </DrawerDescription>
+          </DrawerHeader>
 
-                {/* Country */}
-                <div>
-                  <Label htmlFor="mobile-country" className="text-sm font-medium text-gray-700">
-                    Country
-                  </Label>
-                  <Input
-                    id="mobile-country"
-                    name="country"
-                    value={formik.values.country}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={!isEditing}
-                    className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
-                  />
-                  {formik.touched.country && formik.errors.country && (
-                    <p className="mt-1 text-sm text-red-600">{formik.errors.country}</p>
-                  )}
-                </div>
+          <form onSubmit={formik.handleSubmit} className="px-4 pb-4">
+            <div className="space-y-4">
+              {/* Full Name - Read Only */}
+              <div>
+                <Label htmlFor="mobile-fullName" className="text-sm font-medium text-gray-700">
+                  Nama Lengkap
+                </Label>
+                <Input
+                  id="mobile-fullName"
+                  value={userName || ""}
+                  disabled
+                  className="mt-1 bg-gray-50"
+                />
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-6 flex gap-3">
-                {!isEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={() => setIsAccountSettingsOpen(false)}
-                      variant="outline"
-                      className="flex-1">
-                      Tutup
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsEditing(true);
-                      }}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700">
-                      Edit Profil
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancelMobile}
-                      disabled={isSubmitting}
-                      className="flex-1">
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700">
-                      {isSubmitting ? "Menyimpan..." : "Simpan"}
-                    </Button>
-                  </>
+              {/* Email - Read Only */}
+              <div>
+                <Label htmlFor="mobile-email" className="text-sm font-medium text-gray-700">
+                  Email
+                </Label>
+                <Input
+                  id="mobile-email"
+                  type="email"
+                  value={userEmail || ""}
+                  disabled
+                  className="mt-1 bg-gray-50"
+                />
+              </div>
+
+              {/* Address */}
+              <div>
+                <Label htmlFor="mobile-address" className="text-sm font-medium text-gray-700">
+                  Address
+                </Label>
+                <Textarea
+                  id="mobile-address"
+                  name="address"
+                  value={formik.values.address}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  disabled={!isEditing}
+                  className={`mt-1 text-sm ${!isEditing ? "bg-gray-50" : ""}`}
+                />
+                {formik.touched.address && formik.errors.address && (
+                  <p className="mt-1 text-sm text-red-600">{formik.errors.address}</p>
                 )}
               </div>
-            </form>
-          </DrawerContent>
-        </Drawer>
-      </div>
+
+              {/* Phone Number */}
+              <div>
+                <Label
+                  htmlFor="mobile-phone_number"
+                  className="text-sm font-medium text-gray-700">
+                  No. Handphone
+                </Label>
+                <Input
+                  id="mobile-phone_number"
+                  name="phone_number"
+                  value={formik.values.phone_number}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  disabled={!isEditing}
+                  className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                />
+                {formik.touched.phone_number && formik.errors.phone_number && (
+                  <p className="mt-1 text-sm text-red-600">{formik.errors.phone_number}</p>
+                )}
+              </div>
+
+              {/* State */}
+              <div>
+                <Label htmlFor="mobile-state" className="text-sm font-medium text-gray-700">
+                  State
+                </Label>
+                <Input
+                  id="mobile-state"
+                  name="state"
+                  value={formik.values.state}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  disabled={!isEditing}
+                  className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                />
+                {formik.touched.state && formik.errors.state && (
+                  <p className="mt-1 text-sm text-red-600">{formik.errors.state}</p>
+                )}
+              </div>
+
+              {/* Country */}
+              <div>
+                <Label htmlFor="mobile-country" className="text-sm font-medium text-gray-700">
+                  Country
+                </Label>
+                <Input
+                  id="mobile-country"
+                  name="country"
+                  value={formik.values.country}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  disabled={!isEditing}
+                  className={`mt-1 ${!isEditing ? "bg-gray-50" : ""}`}
+                />
+                {formik.touched.country && formik.errors.country && (
+                  <p className="mt-1 text-sm text-red-600">{formik.errors.country}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex gap-3">
+              {!isEditing ? (
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => setIsAccountSettingsOpen(false)}
+                    variant="outline"
+                    className="flex-1">
+                    Tutup
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700">
+                    Edit Profil
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelMobile}
+                    disabled={isSubmitting}
+                    className="flex-1">
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700">
+                    {isSubmitting ? "Menyimpan..." : "Simpan"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </form>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Language Selection Drawer */}
+      <Drawer open={isLanguageDrawerOpen} onOpenChange={setIsLanguageDrawerOpen}>
+        <DrawerContent className="rounded-t-[24px] border-none p-0 pb-6">
+          <DrawerHeader className="relative flex items-center justify-center border-b p-4">
+            <DrawerTitle className="text-center text-base font-bold text-gray-900">
+              Pilihan Bahasa
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="flex flex-col py-2">
+            {[
+              { code: "id", label: "Bahasa Indonesia", flag: "🇮🇩" },
+              { code: "en", label: "English", flag: "🇺🇸" },
+              { code: "tr", label: "Türkçe", flag: "🇹🇷" }
+            ].map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => {
+                  const curr = lang.code === "id" ? "IDR" : lang.code === "tr" ? "TRY" : "USD";
+                  dispatch(setCurrency(curr));
+                  router.replace(pathname, { locale: lang.code });
+                  setIsLanguageDrawerOpen(false);
+                }}
+                className="flex items-center justify-between px-6 py-3.5 transition-colors active:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{lang.flag}</span>
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      locale === lang.code ? "text-blue-600 font-semibold" : "text-gray-700"
+                    )}>
+                    {lang.label}
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    "flex size-5 items-center justify-center rounded-full border-2",
+                    locale === lang.code
+                      ? "border-blue-600 bg-blue-600"
+                      : "border-gray-300"
+                  )}>
+                  {locale === lang.code && (
+                    <div className="size-2 rounded-full bg-white" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Currency Selection Drawer */}
+      <Drawer open={isCurrencyDrawerOpen} onOpenChange={setIsCurrencyDrawerOpen}>
+        <DrawerContent className="rounded-t-[24px] border-none p-0 pb-6">
+          <DrawerHeader className="relative flex items-center justify-center border-b p-4">
+            <DrawerTitle className="text-center text-base font-bold text-gray-900">
+              Pilihan Mata Uang
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="flex flex-col py-2">
+            {[
+              { code: "IDR", label: "Rupiah Indonesia", symbol: "Rp" },
+              { code: "USD", label: "US Dollar", symbol: "US$" },
+              { code: "TRY", label: "Turkish Lira", symbol: "₺" }
+            ].map((curr) => (
+              <button
+                key={curr.code}
+                onClick={() => {
+                  dispatch(setCurrency(curr.code));
+                  setIsCurrencyDrawerOpen(false);
+                }}
+                className="flex items-center justify-between px-6 py-3.5 transition-colors active:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-600">
+                    {curr.symbol}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      currentCurrency.code === curr.code ? "text-blue-600 font-semibold" : "text-gray-700"
+                    )}>
+                    {curr.label} ({curr.code})
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    "flex size-5 items-center justify-center rounded-full border-2",
+                    currentCurrency.code === curr.code
+                      ? "border-blue-600 bg-blue-600"
+                      : "border-gray-300"
+                  )}>
+                  {currentCurrency.code === curr.code && (
+                    <div className="size-2 rounded-full bg-white" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Mobile Bottom Navbar */}
       <MobileBottomNavbar />
-    </>
+    </div>
   );
 };
 
@@ -1147,9 +1438,463 @@ const TravelerEditModal = ({
   );
 };
 
+const ProfileBookingCard = ({
+  booking,
+  locale,
+  t,
+  touristsData,
+  selectedCurrency,
+  idrToUsdRate,
+  handleViewDetails,
+  handleOpenEditModal,
+  handleCancelTour,
+  isUpdatingStatus,
+  isUpdatingMotorStatus,
+  isCancellingEntertainment,
+  isCancellingVisa
+}: any) => {
+  const isMotor = booking.type === "motor";
+  const isEntertainment = booking.type === "entertainment";
+  // Detect visa robustly: by type field OR by visa-specific fields (document_visa_id present, no motor/entertainment items)
+  const isVisa = booking.type === "visa" || (!!booking.document_visa_id && !booking.book_motor_items?.length && !booking.book_entertainment_attraction_items?.length && !booking.itinerary_id);
+  const isTour = !isMotor && !isEntertainment && !isVisa;
+
+  /** Extract locale-aware string from potentially multilingual object { en, id, tr } */
+  const getStr = (val: any, fallback = ""): string => {
+    if (!val) return fallback;
+    if (typeof val === "string") return val;
+    if (typeof val === "object" && !Array.isArray(val)) {
+      return val[locale] || val["en"] || val["id"] || (Object.values(val).find((v) => typeof v === "string") as string) || fallback;
+    }
+    return String(val) || fallback;
+  };
+
+  const itinerary = booking.itinerary;
+  const items = itinerary?.itinerary_items || booking.book_tour_items || [];
+  const firstTourItem = items[0];
+  const firstMotorItem = booking.book_motor_items?.[0];
+  const firstEntertainmentItem = booking.book_entertainment_attraction_items?.[0];
+
+  const destination = firstTourItem?.destination;
+  const tourTranslation =
+    destination?.translations?.find((tr: any) => tr.language_code === locale) ||
+    destination?.translations?.[0];
+
+  const effectiveMotorId =
+    firstMotorItem?.motor_id ||
+    firstMotorItem?.motor?.id ||
+    booking.motor_id ||
+    "";
+
+  const {
+    motorName: fetchedMotorName,
+    motorThumbnail: fetchedMotorThumbnail,
+    engineCc: fetchedEngineCc
+  } = useMotorSummary(isMotor ? effectiveMotorId : undefined);
+
+  const motorTrans =
+    firstMotorItem?.motor?.translations?.find((tr: any) => tr.language_code === locale) ||
+    firstMotorItem?.motor?.translations?.[0];
+  const motorName =
+    fetchedMotorName ||
+    motorTrans?.name_motor ||
+    firstMotorItem?.motor?.name_motor ||
+    firstMotorItem?.motor?.name ||
+    firstMotorItem?.motor_name ||
+    booking.motor_name;
+
+  const titleName = useMemo(() => {
+    if (isMotor) {
+      return getStr(motorName) || getStr(firstMotorItem?.motor_name) || t("motorRental") || "Rental Motor";
+    }
+    if (isEntertainment) {
+      return (
+        getStr(firstEntertainmentItem?.entertainment_attraction_name) ||
+        getStr(booking.entertainment_attraction?.name) ||
+        getStr(booking.entertainment_attraction_name) ||
+        getStr(booking.title) ||
+        (locale === "en" ? "Attraction Ticket" : "Tiket Atraksi")
+      );
+    }
+    if (isVisa) {
+      return (
+        getStr(booking.document_visa_title) ||
+        getStr(booking.document_visa?.title) ||
+        getStr(booking.package_name) ||
+        (locale === "en" ? "Documents & Visa" : "Dokumen & Visa")
+      );
+    }
+    return (
+      getStr(itinerary?.name) ||
+      getStr(itinerary?.title) ||
+      getStr(tourTranslation?.name) ||
+      (itinerary?.country?.name
+        ? `Trip ke ${getStr(itinerary.country.name)}`
+        : booking.country?.name
+        ? `Trip ke ${getStr(booking.country.name)}`
+        : t("tourPackage") || "Paket Tour")
+    );
+  }, [isMotor, isEntertainment, isVisa, motorName, firstMotorItem, t, firstEntertainmentItem, booking, locale, itinerary, tourTranslation, getStr]);
+
+  const subtitle = useMemo(() => {
+    if (isMotor) {
+      return fetchedEngineCc ? `${fetchedEngineCc} CC` : getStr(booking.country?.name) || "";
+    }
+    if (isEntertainment) {
+      const loc = getStr(booking.entertainment_attraction?.location) || getStr(booking.location);
+      if (loc) return loc;
+      const count = booking.book_entertainment_attraction_items?.length || 0;
+      if (count > 0) return `${count} ${locale === "en" ? "package(s)" : "paket tiket"}`;
+      return "";
+    }
+    if (isVisa) {
+      const country = getStr(booking.country_name) || getStr(booking.document_visa?.country?.name) || "";
+      const pkg = getStr(booking.package_name) || "";
+      if (country && pkg) return `${country} · ${pkg}`;
+      return country || pkg || "";
+    }
+    return getStr(itinerary?.country?.name) || getStr(booking.country?.name) || getStr(destination?.location) || "";
+  }, [isMotor, isEntertainment, isVisa, fetchedEngineCc, booking, locale, itinerary, destination, getStr]);
+
+  const displayDate = isMotor
+    ? booking.start_date
+    : isEntertainment
+    ? (firstEntertainmentItem?.visit_date || booking.booking_date || booking.created_at)
+    : isVisa
+    ? (booking.target_travel_date || booking.created_at)
+    : (firstTourItem?.visit_date || itinerary?.createdAt || booking.created_at);
+
+  const serviceBadge = useMemo(() => {
+    if (isMotor) {
+      return {
+        label: t("motorFilter") || "Rental Motor",
+        icon: Bike
+      };
+    }
+    if (isEntertainment) {
+      return {
+        label: t("entertainmentFilter") || (locale === "en" ? "Attraction Tickets" : "Tiket Atraksi"),
+        icon: Ticket
+      };
+    }
+    if (isVisa) {
+      return {
+        label: t("visaFilter") || "Documents & Visa",
+        icon: FileText
+      };
+    }
+    return {
+      label: t("tourFilter") || "Paket Tour",
+      icon: MapPin
+    };
+  }, [isMotor, isEntertainment, isVisa, t, locale]);
+
+  // Format subtotal as currency
+  const formatSubtotal = (amount: string | number) => {
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+    const effectiveRate = idrToUsdRate > 1 ? idrToUsdRate : (idrToUsdRate > 0 ? 1 / idrToUsdRate : 16761);
+    const displayAmount = selectedCurrency !== "USD" ? numAmount * effectiveRate : numAmount;
+    return new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
+      style: "currency",
+      currency: selectedCurrency,
+      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0,
+      maximumFractionDigits: selectedCurrency === "USD" ? 2 : 0
+    }).format(displayAmount || 0);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || "draft").toLowerCase();
+    switch (s) {
+      case "pending":
+        return { label: "Pending", bg: "bg-amber-50 text-amber-700 border-amber-200/80", dot: "bg-amber-500" };
+      case "confirmed":
+      case "ongoing":
+        return { label: "Ongoing", bg: "bg-blue-50 text-blue-700 border-blue-200/80", dot: "bg-blue-500" };
+      case "paid":
+        return { label: "Paid", bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500" };
+      case "documents_submitted":
+        return { label: "Documents Submitted", bg: "bg-blue-50 text-blue-700 border-blue-200/80", dot: "bg-blue-500" };
+      case "under_review":
+        return { label: "Under Review", bg: "bg-amber-50 text-amber-700 border-amber-200/80", dot: "bg-amber-500" };
+      case "revision_required":
+        return { label: "Revision Required", bg: "bg-orange-50 text-orange-700 border-orange-200/80", dot: "bg-orange-500" };
+      case "submitted_to_embassy":
+        return { label: "Embassy", bg: "bg-indigo-50 text-indigo-700 border-indigo-200/80", dot: "bg-indigo-500" };
+      case "appointment_scheduled":
+        return { label: "Appointment", bg: "bg-purple-50 text-purple-700 border-purple-200/80", dot: "bg-purple-500" };
+      case "approved":
+        return { label: "Approved", bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500" };
+      case "rejected":
+        return { label: "Rejected", bg: "bg-rose-50 text-rose-700 border-rose-200/80", dot: "bg-rose-500" };
+      case "completed":
+        return { label: "Completed", bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500" };
+      case "cancelled":
+        return { label: "Cancelled", bg: "bg-red-50 text-red-700 border-red-200/80", dot: "bg-red-500" };
+      case "expired":
+        return { label: t("expiredStatus") || "Expired", bg: "bg-rose-50 text-rose-700 border-rose-200/80", dot: "bg-rose-500" };
+      case "draft":
+      default:
+        return { label: "Draft", bg: "bg-slate-50 text-slate-700 border-slate-200/80", dot: "bg-slate-400" };
+    }
+  };
+
+  const statusBadge = getStatusBadge(booking.status);
+
+  const data = touristsData?.data || touristsData?.datas;
+  const touristList = Array.isArray(data?.tourists)
+    ? data.tourists
+    : Array.isArray(data)
+      ? data
+      : [];
+
+  const bookingTourists = isVisa
+    ? (booking.applicants || []).map((a: any) => ({
+        id: a.id,
+        name: a.full_name || a.name,
+        gender: a.gender === "male" ? "Mr" : a.gender === "female" ? "Ms" : a.gender,
+        passport_number: a.passport_number,
+        nationality: a.nationality
+      }))
+    : isMotor || isEntertainment
+    ? (booking.tourists || [])
+    : (booking.tourists && booking.tourists.length > 0
+        ? booking.tourists
+        : touristList.filter((t: any) => t.book_tour_id === booking.id));
+
+  const touristCount = isVisa
+    ? (booking.applicant_count || bookingTourists.length || 0)
+    : bookingTourists.length;
+
+  const subtotalValue =
+    typeof booking.subtotal === "string" ? parseFloat(booking.subtotal) : (booking.subtotal || 0);
+  const totalPrice = Number(
+    booking.total_price ||
+    booking.total ||
+    (isEntertainment || isVisa
+      ? subtotalValue || booking.total_price || (booking.unit_price ? booking.unit_price * touristCount : 0)
+      : touristCount > 0 ? subtotalValue * touristCount : subtotalValue)
+  );
+
+  const statusLower = (booking.status || "draft").toLowerCase();
+  const isPendingOrDraft = ["pending", "draft"].includes(statusLower);
+
+  const proceedAction = useMemo(() => {
+    if (!isPendingOrDraft) return null;
+
+    if (isMotor) {
+      if (bookingTourists.length === 0 || statusLower === "draft") {
+        return {
+          href: `/${locale}/orders/rent-motor?book_motor_id=${booking.id}&motor_id=${effectiveMotorId}`,
+          label: t("continueBooking") || "Lanjutkan Pemesanan"
+        };
+      }
+      return {
+        href: `/${locale}/payments?order_id=${booking.id}&type=motor`,
+        label: t("checkout") || "Bayar Sekarang"
+      };
+    }
+
+    if (isEntertainment) {
+      if (bookingTourists.length === 0 || statusLower === "draft") {
+        return {
+          href: `/${locale}/book-entertainment-attraction?book_entertainment_attraction_id=${booking.id}`,
+          label: t("continueBooking") || "Lanjutkan Pemesanan"
+        };
+      }
+      return {
+        href: `/${locale}/payments?order_id=${booking.id}&type=entertainment`,
+        label: t("checkout") || "Bayar Sekarang"
+      };
+    }
+
+    if (isVisa) {
+      const hasApplicants = Array.isArray(booking.applicants) && booking.applicants.length > 0;
+      if (!hasApplicants || statusLower === "draft") {
+        return {
+          href: `/${locale}/orders/document-visa?book_document_visa_id=${booking.id}&document_visa_id=${booking.document_visa_id || ""}`,
+          label: t("continueBooking") || "Lanjutkan Pemesanan"
+        };
+      }
+      return {
+        href: `/${locale}/payments?order_id=${booking.id}&type=document-visa`,
+        label: t("checkout") || "Bayar Sekarang"
+      };
+    }
+
+    return {
+      href: `/${locale}/payments?order_id=${booking.id}`,
+      label: t("checkout") || "Bayar Sekarang"
+    };
+  }, [isPendingOrDraft, isMotor, isEntertainment, isVisa, bookingTourists.length, booking.applicants, statusLower, locale, booking.id, booking.document_visa_id, effectiveMotorId, t]);
+
+  return (
+    <div
+      key={`${booking.type}-${booking.id}`}
+      className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all duration-200 hover:border-slate-300 hover:shadow-md overflow-hidden">
+      <div>
+        {/* Top Header: Service Tag & Status Badge */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-100/80 text-slate-700 border border-slate-200/90">
+            <serviceBadge.icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span>{serviceBadge.label}</span>
+          </div>
+
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border", statusBadge.bg)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", statusBadge.dot)} />
+            <span>{statusBadge.label}</span>
+          </span>
+        </div>
+
+        {/* Title and Subtitle */}
+        <div className="mt-3.5 min-h-[3rem]">
+          <h3 className="text-base font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+            {titleName}
+          </h3>
+          {subtitle && (
+            <p className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 line-clamp-1">
+              <MapPin className="h-3 w-3 text-red-500 shrink-0" />
+              <span>{subtitle}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Display Date */}
+        {displayDate && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2">
+            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <span>
+              {new Date(displayDate).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+              })}
+            </span>
+          </div>
+        )}
+
+        {/* Price Block */}
+        <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-baseline justify-between gap-2">
+          <div>
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {t("totalPrice")}
+            </span>
+            <p className="text-lg sm:text-xl font-extrabold text-blue-600 tracking-tight mt-0.5">
+              {formatSubtotal(totalPrice)}
+            </p>
+          </div>
+          {!isMotor && !isEntertainment && touristCount > 0 && subtotalValue > 0 && (
+            <span className="text-[11px] font-medium text-slate-400 text-right">
+              {formatSubtotal(subtotalValue)} × {touristCount}
+            </span>
+          )}
+        </div>
+
+        {/* Travelers Section */}
+        <div className="mt-3.5 rounded-xl bg-slate-50/80 border border-slate-100 p-3 min-h-[5.5rem] flex flex-col justify-start">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-slate-400" />
+              {isVisa
+                ? (locale === "en" ? "Applicant" : "Pemohon")
+                : "Traveler"}{touristCount > 0 ? ` (${touristCount})` : ""}
+            </span>
+            {isTour && booking.status.toLowerCase() === "draft" && (
+              <button
+                onClick={() => handleOpenEditModal(booking)}
+                className="text-slate-400 hover:text-blue-600 transition-colors p-0.5"
+                title="Edit traveler">
+                <Icon name="Pencil" className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          {touristCount > 0 ? (
+            <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+              {bookingTourists.slice(0, 3).map((tItem: any, idx: number) => (
+                <div key={tItem.id || idx} className="flex items-center gap-2 text-xs text-slate-700">
+                  <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-bold text-blue-600 border border-blue-100">
+                    {idx + 1}
+                  </div>
+                  <span className="truncate font-medium">
+                    {tItem.gender ? `${tItem.gender}. ` : ""}{tItem.name}
+                  </span>
+                </div>
+              ))}
+              {touristCount > 3 && (
+                <p className="text-[11px] text-slate-400 pl-6">
+                  +{touristCount - 3} {isVisa ? (locale === "en" ? "more applicants" : "pemohon lainnya") : "traveler lainnya"}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic my-auto">
+              {isVisa
+                ? (locale === "en" ? "No applicants yet" : "Belum ada data pemohon")
+                : t("noTraveler")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Card Footer Actions */}
+      <div className="mt-4 pt-3.5 border-t border-slate-100">
+        {isPendingOrDraft && proceedAction ? (
+          <div className="space-y-2">
+            {/* Primary Action Button (Continue Booking / Checkout) */}
+            <Link href={proceedAction.href} className="block w-full">
+              <Button
+                size="sm"
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9 shadow-xs transition-colors">
+                {proceedAction.label}
+              </Button>
+            </Link>
+
+            {/* Secondary Action Row: View Details & Cancel */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleViewDetails(booking)}
+                className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-semibold text-xs h-8.5 transition-colors">
+                <Eye className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+                {t("viewDetails")}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold text-xs h-8.5 px-3 shrink-0 transition-colors"
+                onClick={() => handleCancelTour(booking.id, booking.type)}
+                disabled={
+                  isUpdatingStatus ||
+                  isUpdatingMotorStatus ||
+                  isCancellingEntertainment ||
+                  isCancellingVisa ||
+                  (booking.status.toLowerCase() === "pending" && booking.type === "tour")
+                }>
+                {isUpdatingStatus || isUpdatingMotorStatus || isCancellingEntertainment || isCancellingVisa ? "..." : t("cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Default State: Clean full-width View Details button */
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleViewDetails(booking)}
+            className="w-full rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-semibold text-xs h-9 transition-colors">
+            <Eye className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+            {t("viewDetails")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // My Booking Content Component
 const MyBookingContent = ({ userName }: { userName: string }) => {
   const locale = useLocale();
+  const t = useTranslations("MyBooking");
 
   // Get currency from Redux store
   const currentCurrency = useSelector(
@@ -1161,7 +1906,7 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
   const {
     data: bookingsData,
     isLoading: isLoadingBookings,
-    refetch
+    refetch: refetchTours
   } = useGetAllTourQuery(undefined);
   const {
     data: motorBookingsData,
@@ -1169,16 +1914,114 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     refetch: refetchMotor
   } = useFindAllBookMotorsQuery(undefined);
   const {
+    data: entertainmentBookingsData,
+    isLoading: isLoadingEntertainment,
+    refetch: refetchEntertainment
+  } = useFindAllBookEntertainmentAttractionsQuery(undefined);
+  const {
+    data: visaBookingsData,
+    isLoading: isLoadingVisaBookings,
+    refetch: refetchVisa
+  } = useFindAllBookDocumentVisasQuery(undefined);
+  const {
     data: touristsData,
     isLoading: isLoadingTourists,
     refetch: refetchTourists
   } = useFindAllTouristQuery();
 
-  const isLoading = isLoadingBookings || isLoadingTourists || isLoadingMotorBookings;
+  const isLoading = isLoadingBookings || isLoadingTourists || isLoadingMotorBookings || isLoadingEntertainment || isLoadingVisaBookings;
 
-  const normalizedTourBookings = (bookingsData?.data || bookingsData?.datas || []).map((b: any) => ({...b, type: 'tour'}));
-  const normalizedMotorBookings = (motorBookingsData?.data || motorBookingsData?.datas || []).map((b: any) => ({...b, type: 'motor'}));
-  const allBookings = [...normalizedTourBookings, ...normalizedMotorBookings].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const normalizedTourBookings = useMemo(() => {
+    return (bookingsData?.data || bookingsData?.datas || []).map((b: any) => ({
+      ...b,
+      type: "tour"
+    }));
+  }, [bookingsData]);
+
+  const normalizedMotorBookings = useMemo(() => {
+    return (motorBookingsData?.data || motorBookingsData?.datas || []).map((b: any) => ({
+      ...b,
+      type: "motor"
+    }));
+  }, [motorBookingsData]);
+
+  const normalizedEntertainmentBookings = useMemo(() => {
+    const rawData = (entertainmentBookingsData as any)?.data || (entertainmentBookingsData as any)?.datas || [];
+    const list = Array.isArray(rawData) ? rawData : rawData ? [rawData] : [];
+    return list.map((b: any) => ({
+      ...b,
+      type: "entertainment"
+    }));
+  }, [entertainmentBookingsData]);
+
+  const normalizedVisaBookings = useMemo(() => {
+    // Try datas first (array), then data (could also be array from some backends)
+    const rawDatas = (visaBookingsData as any)?.datas;
+    const rawData = (visaBookingsData as any)?.data;
+    const list = Array.isArray(rawDatas) ? rawDatas
+      : Array.isArray(rawData) ? rawData
+      : rawDatas ? [rawDatas]
+      : rawData ? [rawData]
+      : [];
+    // Spread first, then set type: "visa" LAST to guarantee it's not overwritten
+    return list.filter((b: any) => b && typeof b === "object" && b.id).map((b: any) => {
+      const item = { ...b };
+      item.type = "visa"; // Always override to ensure correct type
+      return item;
+    });
+  }, [visaBookingsData]);
+
+
+  const allBookings = useMemo(() => {
+    return [...normalizedTourBookings, ...normalizedMotorBookings, ...normalizedEntertainmentBookings, ...normalizedVisaBookings].sort(
+      (a: any, b: any) => {
+        const timeA = new Date(a.created_at || a.booking_date || 0).getTime();
+        const timeB = new Date(b.created_at || b.booking_date || 0).getTime();
+        return timeB - timeA;
+      }
+    );
+  }, [normalizedTourBookings, normalizedMotorBookings, normalizedEntertainmentBookings, normalizedVisaBookings]);
+
+  // Service filter state
+  const [selectedService, setSelectedService] = useState<"all" | "tour" | "motor" | "entertainment" | "visa">("all");
+
+  const serviceFilterTabs = useMemo(() => [
+    {
+      id: "all",
+      label: t("allFilter") || "Semua",
+      count: allBookings.length,
+      icon: Ticket
+    },
+    {
+      id: "tour",
+      label: t("tourFilter") || "Paket Tour",
+      count: allBookings.filter((b: any) => b.type === "tour").length,
+      icon: MapPin
+    },
+    {
+      id: "motor",
+      label: t("motorFilter") || "Rental Motor",
+      count: allBookings.filter((b: any) => b.type === "motor").length,
+      icon: Bike
+    },
+    {
+      id: "entertainment",
+      label: t("entertainmentFilter") || (locale === "en" ? "Attraction Tickets" : "Tiket Atraksi"),
+      count: allBookings.filter((b: any) => b.type === "entertainment").length,
+      icon: Sparkles
+    },
+    {
+      id: "visa",
+      label: t("visaFilter") || "Documents & Visa",
+      count: allBookings.filter((b: any) => b.type === "visa").length,
+      icon: FileText
+    }
+  ], [allBookings, t, locale]);
+
+  const filteredBookings = useMemo(() => {
+    if (selectedService === "all") return allBookings;
+    return allBookings.filter((b: any) => b.type === selectedService);
+  }, [allBookings, selectedService]);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1196,9 +2039,12 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     setIsEditModalOpen(true);
   };
 
-  // Cancel Tour Logic
+  // Cancel logic
   const [updateStatusTour, { isLoading: isUpdatingStatus }] = useUpdateStatusTourMutation();
   const [updateStatusMotor, { isLoading: isUpdatingMotorStatus }] = useUpdateStatusMotorMutation();
+  const [cancelEntertainmentBooking, { isLoading: isCancellingEntertainment }] = useCancelBookingMutation();
+  const [cancelVisaBooking, { isLoading: isCancellingVisa }] = useCancelBookDocumentVisaMutation();
+
   const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
   const [bookingToCancelType, setBookingToCancelType] = useState<string | null>(null);
@@ -1213,24 +2059,29 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     if (!bookingToCancelId || !bookingToCancelType) return;
 
     try {
-      if (bookingToCancelType === 'motor') {
+      if (bookingToCancelType === "motor") {
         await updateStatusMotor({
           id: bookingToCancelId,
           status: "cancelled"
         }).unwrap();
-        toast.success("Motor rental has been canceled successfully");
+      } else if (bookingToCancelType === "entertainment") {
+        await cancelEntertainmentBooking(bookingToCancelId).unwrap();
+      } else if (bookingToCancelType === "visa") {
+        await cancelVisaBooking(bookingToCancelId).unwrap();
+        refetchVisa();
       } else {
         await updateStatusTour({
           id: bookingToCancelId,
-          data: { status: "cancelled" }
+          status: "cancelled"
         }).unwrap();
-        toast.success("Tour has been canceled successfully");
       }
-      refetch(); // Refetch bookings list
+      toast.success(t("cancelSuccess"));
+      refetchTours();
       refetchMotor();
+      refetchEntertainment();
     } catch (error) {
       console.error("Failed to cancel booking:", error);
-      toast.error("Failed to cancel booking");
+      toast.error(t("cancelFailed"));
     } finally {
       setIsCancelAlertOpen(false);
       setBookingToCancelId(null);
@@ -1241,14 +2092,22 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-6 text-2xl font-bold text-gray-900">My Booking</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t("title")}</h2>
+          <p className="text-sm text-slate-500 mt-1">{t("subtitle")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-lg border border-gray-200 p-4">
-              <div className="mb-3 h-40 rounded-lg bg-gray-200"></div>
-              <div className="mb-2 h-4 w-3/4 rounded bg-gray-200"></div>
-              <div className="mb-2 h-3 w-1/2 rounded bg-gray-200"></div>
-              <div className="h-6 w-20 rounded-full bg-gray-200"></div>
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="h-6 w-24 rounded-lg bg-slate-100" />
+                <div className="h-6 w-16 rounded-full bg-slate-100" />
+              </div>
+              <div className="h-5 w-3/4 rounded bg-slate-100" />
+              <div className="h-4 w-1/2 rounded bg-slate-100" />
+              <div className="h-14 rounded-xl bg-slate-100" />
+              <div className="h-16 rounded-xl bg-slate-100" />
+              <div className="h-9 rounded-xl bg-slate-100" />
             </div>
           ))}
         </div>
@@ -1256,192 +2115,95 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
     );
   }
 
-  if (allBookings.length === 0) {
-    return (
-      <div>
-        <h2 className="mb-6 text-2xl font-bold text-gray-900">My Booking</h2>
-        <div className="flex flex-col items-center justify-center py-16">
-          <Ticket className="mb-4 h-16 w-16 text-gray-300" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-900">Belum ada booking</h3>
-          <p className="text-sm text-gray-500">Booking Anda akan muncul di sini</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold text-gray-900">My Booking</h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {allBookings.map((booking: any) => {
-          const isMotor = booking.type === 'motor';
-          const firstItem = isMotor ? booking.book_motor_items?.[0] : booking.book_tour_items?.[0];
-          const translation = isMotor
-            ? { name: firstItem?.motor_name }
-            : (firstItem?.destination?.translations?.find((tr: any) => tr.language_code === locale) || firstItem?.destination?.translations?.[0]);
+      {/* Title and Subtitle */}
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t("title")}</h2>
+        <p className="text-sm text-slate-500 mt-1">{t("subtitle")}</p>
+      </div>
 
-          // Format subtotal as currency
-          const formatSubtotal = (amount: string | number) => {
-            const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-
-            // Convert to selected currency
-            const displayAmount = selectedCurrency === "USD" ? numAmount * idrToUsdRate : numAmount;
-            return new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
-              style: "currency",
-              currency: selectedCurrency,
-              minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0,
-              maximumFractionDigits: selectedCurrency === "USD" ? 2 : 0
-            }).format(displayAmount);
-          };
-
-          // Get status label and color
-          const getStatusBadge = (status: string) => {
-            const statusConfig = {
-              draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
-              pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-              confirmed: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
-              ongoing: { label: "Ongoing", color: "bg-blue-100 text-blue-700" },
-              completed: { label: "Completed", color: "bg-green-100 text-green-700" },
-              cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" }
-            };
-            return statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
-          };
-
-          const statusBadge = getStatusBadge(booking.status);
-
-          const data = touristsData?.data || touristsData?.datas;
-          const touristList = Array.isArray(data?.tourists)
-            ? data.tourists
-            : Array.isArray(data)
-              ? data
-              : [];
-
-          const bookingTourists = isMotor
-            ? (booking.tourists || [])
-            : touristList.filter((t: any) => t.book_tour_id === booking.id);
-
-          const touristCount = bookingTourists.length;
-          const subtotalValue =
-            typeof booking.subtotal === "string" ? parseFloat(booking.subtotal) : booking.subtotal;
-          const totalPrice = isMotor
-            ? (typeof booking.total_price === "string" ? parseFloat(booking.total_price) : booking.total_price)
-            : (touristCount > 0 ? subtotalValue * touristCount : subtotalValue);
-
-          const displayDate = isMotor ? booking.start_date : firstItem?.visit_date;
-
+      {/* Service Filter Tabs */}
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-4">
+        {serviceFilterTabs.map((tab) => {
+          const isActive = selectedService === tab.id;
           return (
-            <div
-              key={booking.id}
-              className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md">
-              {/* Header with Status Badge and Eye Icon */}
-              <div className="mb-3 flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {translation?.name || "Destination"}
-                  </h3>
-                  {booking.country && (
-                    <p className="text-sm text-gray-500">{booking.country.name}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleViewDetails(booking)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100">
-                    <Icon name="Eye" className="h-4 w-4 text-gray-600" />
-                  </button>
-                  <span
-                    className={cn(
-                      "inline-block rounded-full px-3 py-1 text-xs font-medium",
-                      statusBadge.color
-                    )}>
-                    {statusBadge.label}
-                  </span>
-                </div>
-              </div>
-
-              {/* Visit Date */}
-              {displayDate && (
-                <p className="mb-2 text-sm text-gray-500">
-                  {new Date(displayDate).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric"
-                  })}
-                </p>
-              )}
-
-              <div className="mb-3">
-                <p className="text-sm text-gray-500">Total Harga</p>
-                <p className="text-lg font-bold text-gray-900">{formatSubtotal(totalPrice)}</p>
-                {!isMotor && touristCount > 0 && (
-                  <p className="text-xs text-gray-400">
-                    {formatSubtotal(subtotalValue)} × {touristCount} orang
-                  </p>
-                )}
-              </div>
-
-              {/* Tourist List */}
-              <div className="mb-4 space-y-2 rounded-lg bg-gray-50 p-3">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-gray-900">
-                    Traveler {touristCount > 0 ? `(${touristCount})` : ""}
-                  </h4>
-                  {booking.status.toLowerCase() === "draft" && (
-                    <button
-                      onClick={() => handleOpenEditModal(booking)}
-                      className="text-gray-400 transition-colors hover:text-blue-600">
-                      <Icon name="Pencil" className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {touristCount > 0 ? (
-                  <div className="grid grid-cols-1 gap-1.5">
-                    {bookingTourists.map((t: any, idx: number) => (
-                      <div
-                        key={t.id || idx}
-                        className="flex items-center gap-2 text-sm text-gray-700">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-600">
-                          {idx + 1}
-                        </div>
-                        <span className="truncate">
-                          {t.gender}. {t.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="py-1 text-xs text-gray-400 italic">Belum ada data traveler</p>
-                )}
-              </div>
-
-               {/* Action Buttons */}
-              {(["pending", "draft"].includes(booking.status.toLowerCase())) && (
-                <div className="flex gap-2">
-                  {touristCount > 0 && (
-                    <Link
-                      href={`/${locale}/payments?order_id=${booking.id}`}
-                      className="flex-1">
-                      <Button
-                        size="sm"
-                        className="w-full bg-blue-500 text-white hover:bg-blue-600">
-                        Checkout
-                      </Button>
-                    </Link>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => handleCancelTour(booking.id, booking.type)}
-                    disabled={(isUpdatingStatus || isUpdatingMotorStatus) || (booking.status.toLowerCase() === "pending" && !isMotor)}>
-                    {isUpdatingStatus || isUpdatingMotorStatus ? "..." : "Cancel"}
-                  </Button>
-                </div>
-              )}
-            </div>
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSelectedService(tab.id as any)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer",
+                isActive
+                  ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
+                  : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200"
+              )}>
+              <tab.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-slate-400")} />
+              <span>{tab.label}</span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                  isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                )}>
+                {tab.count}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {/* Content / List or Empty State */}
+      {allBookings.length === 0 ? (
+        <div className="mt-8 flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4">
+            <Ticket className="h-8 w-8" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">{t("emptyTitle")}</h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-sm">{t("emptyDesc")}</p>
+        </div>
+      ) : filteredBookings.length === 0 ? (
+        <div className="mt-8 flex flex-col items-center justify-center py-14 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 mb-3.5">
+            <Ticket className="h-7 w-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">
+            {locale === "en" ? "No bookings in this service" : "Tidak ada pesanan untuk layanan ini"}
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm">
+            {locale === "en"
+              ? "You don't have any bookings in this selected category yet."
+              : "Anda belum memiliki riwayat pesanan untuk kategori layanan yang dipilih."}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedService("all")}
+            className="mt-4 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold">
+            {locale === "en" ? "Show all bookings" : "Lihat semua pesanan"}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {filteredBookings.map((booking: any) => (
+            <ProfileBookingCard
+              key={`${booking.type}-${booking.id}`}
+              booking={booking}
+              locale={locale}
+              t={t}
+              touristsData={touristsData}
+              selectedCurrency={selectedCurrency}
+              idrToUsdRate={idrToUsdRate}
+              handleViewDetails={handleViewDetails}
+              handleOpenEditModal={handleOpenEditModal}
+              handleCancelTour={handleCancelTour}
+              isUpdatingStatus={isUpdatingStatus}
+              isUpdatingMotorStatus={isUpdatingMotorStatus}
+              isCancellingEntertainment={isCancellingEntertainment}
+              isCancellingVisa={isCancellingVisa}
+            />
+          ))}
+        </div>
+      )}
 
       <TravelerEditModal
         open={isEditModalOpen}
@@ -1457,183 +2219,206 @@ const MyBookingContent = ({ userName }: { userName: string }) => {
       <AlertDialog open={isCancelAlertOpen} onOpenChange={setIsCancelAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This tour booking will be permanently cancelled.
+              {t("cancelConfirmDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setBookingToCancelId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setBookingToCancelId(null)}>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmCancel}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-              disabled={isUpdatingStatus}>
-              {isUpdatingStatus ? "Cancelling..." : "Continue"}
+              disabled={isUpdatingStatus || isUpdatingMotorStatus || isCancellingEntertainment || isCancellingVisa}>
+              {isUpdatingStatus || isUpdatingMotorStatus || isCancellingEntertainment || isCancellingVisa
+                ? t("cancelling")
+                : t("cancelConfirmBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Booking Detail Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
-          <DialogHeader className="shrink-0 border-b p-6">
-            <DialogTitle>Detail Booking</DialogTitle>
-          </DialogHeader>
-
-          {selectedBooking && (
-            <>
-              <div className="shrink-0 border-b bg-gray-50/30 p-6">
-                {/* Booking Info Card */}
-                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                  <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Booking</h3>
-                  <div className="grid gap-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Booking ID:</span>
-                      <span className="font-mono font-medium text-blue-600">
-                        {selectedBooking.id}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Status:</span>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          selectedBooking.status?.toLowerCase() === "completed" ||
-                            selectedBooking.status?.toLowerCase() === "ongoing"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                        )}>
-                        {selectedBooking.status}
-                      </span>
-                    </div>
-                    {selectedBooking.type === 'motor' ? (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Mulai Sewa:</span>
-                          <span className="font-medium">
-                            {selectedBooking.start_date ? new Date(selectedBooking.start_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Selesai Sewa:</span>
-                          <span className="font-medium">
-                            {selectedBooking.end_date ? new Date(selectedBooking.end_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t border-gray-100 pt-2">
-                          <span className="font-semibold text-gray-900">Total Harga:</span>
-                          <span className="font-bold text-blue-600">
-                            {new Intl.NumberFormat("id-ID", {
-                              style: "currency",
-                              currency: "IDR",
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0
-                            }).format(Number(selectedBooking.total_price) || 0)}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {selectedBooking.country && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Negara:</span>
-                            <span className="font-medium">{selectedBooking.country.name}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between border-t border-gray-100 pt-2">
-                          <span className="font-semibold text-gray-900">Total Subtotal:</span>
-                          <span className="font-bold text-blue-600">
-                            {new Intl.NumberFormat("id-ID", {
-                              style: "currency",
-                              currency: "IDR",
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0
-                            }).format(parseFloat(selectedBooking.subtotal))}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 space-y-6 overflow-y-auto p-6">
-                {selectedBooking.type === 'motor' ? (
-                  /* Motor Rental Items */
-                  <div className="rounded-xl border border-gray-100 p-4">
-                    <h3 className="mb-4 text-sm font-bold text-gray-900">
-                      Detail Motor ({selectedBooking.book_motor_items?.length || 0} Unit)
-                    </h3>
-                    <div className="space-y-3">
-                      {(selectedBooking.book_motor_items || []).map((item: any, index: number) => (
-                        <div key={item.id || index} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                          <div className="mb-1 font-medium text-gray-900">{item.motor_name}</div>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>Qty: {item.qty}</span>
-                            <span>{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(item.subtotal))}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Tourists */}
-                    {(selectedBooking.tourists || []).length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="mb-2 text-sm font-bold text-gray-900">Data Penyewa</h4>
-                        <div className="space-y-2">
-                          {(selectedBooking.tourists || []).map((t: any, i: number) => (
-                            <div key={t.id || i} className="rounded-lg border border-gray-100 bg-white p-3 text-sm">
-                              <div className="font-medium text-gray-900">{t.name}</div>
-                              <div className="text-gray-500">No. Paspor: {t.passport_number}</div>
-                              <div className="text-gray-500">Telp: {t.phone_number}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Tour Itinerary Detail */
-                  <div className="rounded-xl border border-gray-100 p-4">
-                    <h3 className="mb-4 text-sm font-bold text-gray-900">
-                      Detail Itinerary ({selectedBooking.book_tour_items?.length || 0} Destinasi)
-                    </h3>
-                    <div className="space-y-0">
-                      {(() => {
-                        // Sort items by visit_date chronologically
-                        const items = selectedBooking.book_tour_items || [];
-                        const sortedItems = [...items].sort((a: any, b: any) => {
-                          const dateA = new Date(a.visit_date).getTime();
-                          const dateB = new Date(b.visit_date).getTime();
-                          if (dateA !== dateB) return dateA - dateB;
-                          // Stable secondary sort using created_at
-                          const seqA = new Date(a.created_at || 0).getTime();
-                          const seqB = new Date(b.created_at || 0).getTime();
-                          return seqA - seqB;
-                        });
-
-                        return sortedItems.map((item: any, index: number) => (
-                          <TourItemDetail
-                            key={item.id}
-                            item={item}
-                            index={index}
-                            locale={locale}
-                            dayNumber={index + 1}
-                            dayRange={undefined}
-                          />
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <BookTourDetail
+        open={isModalOpen}
+        setOpen={setIsModalOpen}
+        data={selectedBooking}
+        onCancelled={() => {
+          refetchTours();
+          refetchMotor();
+          refetchEntertainment();
+          refetchVisa();
+        }}
+      />
     </div>
   );
+};
+
+
+// Itinerary Destination Item Component for Desktop Modal
+const DesktopTourItemDetail = ({
+  item,
+  dayNumber,
+  startDate,
+  locale
+}: {
+  item: any;
+  dayNumber: number;
+  startDate?: string;
+  locale: string;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const translation =
+    item?.destination?.translations?.find((tr: any) => tr.language_code === locale) ||
+    item?.destination?.translations?.[0];
+  const destName = translation?.name || item?.destination?.name || item?.name || "Destinasi Wisata";
+  const destLocation = item?.destination?.location || item?.location || "";
+  const destImage =
+    item?.destination?.thumbnail ||
+    translation?.thumbnail ||
+    item?.thumbnail ||
+    "/images/turkey-destination.jpg";
+
+  // Calculate visit date
+  const visitDate = useMemo(() => {
+    if (item?.visit_date) {
+      return new Date(item.visit_date);
+    }
+    if (startDate) {
+      const base = new Date(startDate);
+      if (!isNaN(base.getTime())) {
+        base.setDate(base.getDate() + (dayNumber - 1));
+        return base;
+      }
+    }
+    return null;
+  }, [item?.visit_date, startDate, dayNumber]);
+
+  const formattedDate = visitDate
+    ? visitDate.toLocaleDateString(locale === "en" ? "en-US" : locale === "tr" ? "tr-TR" : "id-ID", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      })
+    : null;
+
+  return (
+    <div className="relative border-l-2 border-blue-200 pl-4 sm:pl-5 pb-5 last:pb-1">
+      {/* Node Dot */}
+      <div className="absolute -left-[9px] top-1.5 h-4 w-4 rounded-full border-2 border-blue-500 bg-white shadow-xs" />
+
+      <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs">
+        {/* Header with Sequence and Date */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+              {locale === "en" ? `Day ${dayNumber}` : `Hari ke-${dayNumber}`}
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">#{dayNumber}</span>
+          </div>
+
+          {formattedDate && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+              <Calendar className="h-3 w-3 text-slate-400" />
+              <span>{formattedDate}</span>
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full text-left transition-colors flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative h-14 w-14 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
+              <ImageWithFallback
+                src={destImage}
+                alt={destName}
+                fill
+                className="object-cover"
+                fallbackSrc="/images/turkey-destination.jpg"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                {destName}
+              </h4>
+              {destLocation && (
+                <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 truncate">
+                  <MapPin className="h-3 w-3 text-red-500 shrink-0" />
+                  <span>{destLocation}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-slate-400 transition-transform mt-1",
+              isExpanded && "rotate-180 text-blue-600"
+            )}
+          />
+        </button>
+
+        {/* Expandable Activity Details */}
+        {isExpanded && translation?.detail_tour && translation.detail_tour.length > 0 && (
+          <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3 text-xs space-y-1.5">
+            <p className="text-[11px] font-semibold text-blue-900 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-amber-500" />
+              <span>{locale === "en" ? "Destination Activities:" : "Aktivitas Destinasi:"}</span>
+            </p>
+            <ul className="space-y-1 pt-1">
+              {translation.detail_tour.map((detail: string, idx: number) => (
+                <li key={idx} className="flex items-start gap-2 text-[11px] text-slate-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                  <span className="capitalize leading-relaxed">{detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Safe date formatting helper for various formats (DD-MM-YYYY, YYYY-MM-DD, ISO, etc.)
+const formatDateSafe = (rawDate?: string | Date | null, locale = "en") => {
+  if (!rawDate) return null;
+  if (rawDate instanceof Date) {
+    if (!isNaN(rawDate.getTime())) {
+      return rawDate.toLocaleDateString(locale === "en" ? "en-US" : locale === "tr" ? "tr-TR" : "id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    }
+    return null;
+  }
+  const str = String(rawDate).trim();
+  const ddmmyyyy = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(str);
+  if (ddmmyyyy) {
+    const [, d, m, y] = ddmmyyyy;
+    const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.toLocaleDateString(locale === "en" ? "en-US" : locale === "tr" ? "tr-TR" : "id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    }
+  }
+  const dateObj = new Date(str);
+  if (!isNaN(dateObj.getTime())) {
+    return dateObj.toLocaleDateString(locale === "en" ? "en-US" : locale === "tr" ? "tr-TR" : "id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+  return str;
 };
 
 // Order Detail Modal Component for Desktop
@@ -1647,38 +2432,192 @@ const OrderDetailModal = ({
   payment: any;
 }) => {
   const locale = useLocale();
-  const { data: tourResponse, isLoading: isLoadingTour } = useFindTourByIdQuery(payment?.book_tour_id, {
-    skip: !open || !payment?.book_tour_id
-  });
-  const { data: motorResponse, isLoading: isLoadingMotor } = useFindBookMotorByIdQuery(payment?.book_motor_id, {
-    skip: !open || !payment?.book_motor_id
-  });
+  const t = useTranslations("Orders");
+  const isDocumentVisa = payment?.service_type === "document_visa" || Boolean(payment?.book_document_visa_id);
+  const isMotor = (payment?.service_type === "rent_motor" || Boolean(payment?.book_motor_id)) && !isDocumentVisa;
+  const isEntertainment = (payment?.service_type === "entertainment" || Boolean(payment?.book_entertainment_attraction_id)) && !isDocumentVisa;
+  const isTour = (payment?.service_type === "tour" || Boolean(payment?.book_tour_id)) && !isDocumentVisa && !isMotor && !isEntertainment;
+
+  const { data: tourResponse, isLoading: isLoadingTour } = useFindTourByIdQuery(
+    payment?.book_tour_id,
+    { skip: !open || !payment?.book_tour_id }
+  );
+  const { data: motorResponse, isLoading: isLoadingMotor } = useFindBookMotorByIdQuery(
+    payment?.book_motor_id,
+    { skip: !open || !payment?.book_motor_id }
+  );
+  const { data: entertainmentResponse, isLoading: isLoadingEntertainment } =
+    useFindBookEntertainmentAttractionByIdQuery(
+      payment?.book_entertainment_attraction_id,
+      { skip: !open || !payment?.book_entertainment_attraction_id }
+    );
+  const { data: documentVisaResponse, isLoading: isLoadingDocumentVisa } =
+    useFindBookDocumentVisaByIdQuery(
+      payment?.book_document_visa_id,
+      { skip: !open || !payment?.book_document_visa_id }
+    );
+
+  const tourData = tourResponse?.data || tourResponse;
+  const motorData = motorResponse?.data || motorResponse;
+  const entertainmentData: any = entertainmentResponse?.data || entertainmentResponse;
+  const documentVisaData: any =
+    documentVisaResponse?.data || documentVisaResponse || payment?.book_document_visa;
+
+  const attractionTitle = useMemo(() => {
+    return (
+      entertainmentData?.book_entertainment_attraction_items?.[0]?.entertainment_attraction_name ||
+      entertainmentData?.entertainment_attraction?.name ||
+      entertainmentData?.entertainment_attraction_name ||
+      entertainmentData?.title ||
+      ""
+    );
+  }, [entertainmentData]);
+
+  const visitDateFormatted = useMemo(() => {
+    return formatDateSafe(entertainmentData?.booking_date || entertainmentData?.visit_date, locale);
+  }, [entertainmentData?.booking_date, entertainmentData?.visit_date, locale]);
+
+  const itineraryId = tourData?.itinerary_id || tourData?.itinerary?.id;
+  const { data: itineraryResponse, isLoading: isLoadingItinerary } = useGetItineraryByIdQuery(
+    itineraryId!,
+    { skip: !itineraryId || !open }
+  );
+  const itinerary = itineraryResponse?.data || itineraryResponse || tourData?.itinerary;
+
+  const itineraryItems = useMemo(() => {
+    if (itinerary?.itinerary_items && Array.isArray(itinerary.itinerary_items) && itinerary.itinerary_items.length > 0) {
+      return itinerary.itinerary_items;
+    }
+    if (tourData?.book_tour_items && Array.isArray(tourData.book_tour_items) && tourData.book_tour_items.length > 0) {
+      return tourData.book_tour_items;
+    }
+    return [];
+  }, [itinerary, tourData]);
+
   const [cancelPayment, { isLoading: isCancelling }] = useCancelPaymentMutation();
   const [showCancelAlert, setShowCancelAlert] = useState(false);
 
-  const tourData = tourResponse?.data;
-  const motorData = motorResponse?.data;
-  const isLoading = isLoadingTour || isLoadingMotor;
+  const { data: bookersData } = useFindAllBookersQuery(undefined, { skip: !open });
 
-  // Currency formatting
+  const booker = useMemo(() => {
+    if (documentVisaData?.booker && (documentVisaData.booker.name || documentVisaData.booker.email)) {
+      return documentVisaData.booker;
+    }
+    if (documentVisaData?.booker_name || documentVisaData?.booker_email) {
+      return {
+        name: documentVisaData.booker_name,
+        email: documentVisaData.booker_email,
+        phone_number: documentVisaData.booker_phone || documentVisaData.booker_phone_number
+      };
+    }
+    if (entertainmentData?.booker && (entertainmentData.booker.name || entertainmentData.booker.email)) {
+      return entertainmentData.booker;
+    }
+    if (entertainmentData?.pemesan && (entertainmentData.pemesan.name || entertainmentData.pemesan.email)) {
+      return entertainmentData.pemesan;
+    }
+    if (tourData?.booker && (tourData.booker.name || tourData.booker.email)) {
+      return tourData.booker;
+    }
+    if (tourData?.pemesan && (tourData.pemesan.name || tourData.pemesan.email)) {
+      return tourData.pemesan;
+    }
+    if (motorData?.booker && (motorData.booker.name || motorData.booker.email)) {
+      return motorData.booker;
+    }
+    if (motorData?.pemesan && (motorData.pemesan.name || motorData.pemesan.email)) {
+      return motorData.pemesan;
+    }
+
+    const bookerId =
+      documentVisaData?.booker_id ||
+      entertainmentData?.booker_id ||
+      entertainmentData?.pemesan_id ||
+      tourData?.booker_id ||
+      tourData?.pemesan_id ||
+      motorData?.booker_id ||
+      motorData?.pemesan_id ||
+      payment?.booker_id;
+
+    if (bookerId && bookersData) {
+      const allBookers = bookersData?.data || bookersData?.datas || [];
+      const found = allBookers.find((b: any) => b.id === bookerId);
+      if (found) return found;
+    }
+
+    if (payment?.booker) return payment.booker;
+    if (payment?.customer) {
+      return {
+        name: payment.customer.name || payment.customer.full_name,
+        email: payment.customer.email,
+        phone_number: payment.customer.profile?.phone_number || payment.customer.phone_number
+      };
+    }
+
+    return null;
+  }, [documentVisaData, entertainmentData, tourData, motorData, bookersData, payment]);
+
+  const tourists: any[] = useMemo(() => {
+    if (isDocumentVisa && documentVisaData?.applicants && documentVisaData.applicants.length > 0) {
+      return documentVisaData.applicants;
+    }
+    if (isEntertainment && entertainmentData?.tourists && entertainmentData.tourists.length > 0) {
+      return entertainmentData.tourists;
+    }
+    if (isTour && tourData?.tourists && tourData.tourists.length > 0) {
+      return tourData.tourists;
+    }
+    if (isMotor && motorData?.tourists && motorData.tourists.length > 0) {
+      return motorData.tourists;
+    }
+    if (payment?.tourists && payment.tourists.length > 0) {
+      return payment.tourists;
+    }
+    return [];
+  }, [isDocumentVisa, isEntertainment, isTour, isMotor, documentVisaData, entertainmentData, tourData, motorData, payment]);
+
   const currentCurrency = useSelector(
-    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+    (state: any) => state.currency || { code: "IDR", symbol: "Rp", idrToUsdRate: 16000 }
   );
 
-  const formatPrice = (amount: number, currencyCode: string) => {
-    const validCurrency = currencyCode || "IDR";
-    const isUSD = validCurrency === "USD";
-    return new Intl.NumberFormat(isUSD ? "en-US" : "id-ID", {
-      style: "currency",
-      currency: validCurrency,
-      minimumFractionDigits: isUSD ? 2 : 0,
-      maximumFractionDigits: isUSD ? 2 : 0
-    }).format(amount);
+  const formatPrice = (rawPrice: number) => {
+    let displayPrice = Number(rawPrice || 0);
+    if (currentCurrency.code !== "USD") {
+      displayPrice = displayPrice * (currentCurrency.idrToUsdRate || 1);
+    }
+    return new Intl.NumberFormat(
+      currentCurrency.code === "IDR"
+        ? "id-ID"
+        : currentCurrency.code === "TRY"
+        ? "tr-TR"
+        : "en-US",
+      {
+        style: "currency",
+        currency: currentCurrency.code,
+        maximumFractionDigits: currentCurrency.code === "IDR" ? 0 : 2
+      }
+    )
+      .format(displayPrice)
+      .replace("$", "US$ ");
+  };
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || "").toLowerCase();
+    if (s === "success" || s === "succes" || s === "completed" || s === "paid") {
+      return { label: "Success", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+    if (s === "pending") {
+      return { label: "Pending", bg: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+    if (s === "cancelled" || s === "failed") {
+      return { label: s === "cancelled" ? "Cancelled" : "Failed", bg: "bg-red-50 text-red-700 border-red-200" };
+    }
+    return { label: status || "Draft", bg: "bg-slate-50 text-slate-700 border-slate-200" };
   };
 
   const handleCancelPayment = async () => {
     try {
-      const result = await cancelPayment(payment.id).unwrap();
+      await cancelPayment(payment.id).unwrap();
       toast.success("Payment cancelled successfully");
       setShowCancelAlert(false);
       onOpenChange(false);
@@ -1687,179 +2626,562 @@ const OrderDetailModal = ({
     }
   };
 
-  // Check if payment can be cancelled (only pending/failed status)
   const canCancel =
     payment?.status?.toLowerCase() === "pending" || payment?.status?.toLowerCase() === "failed";
+
+  if (!payment) return null;
+  const statusBadge = getStatusBadge(payment.status);
+  const startDate = tourData?.visit_date || tourData?.start_date || tourData?.created_at || payment?.created_at;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl">
-          <DialogHeader className="shrink-0 border-b p-6">
-            <DialogTitle>Detail Pesanan</DialogTitle>
+        <DialogContent showCloseButton={false} className="flex max-h-[90vh] flex-col p-0 sm:max-w-2xl rounded-2xl overflow-hidden">
+          {/* Header */}
+          <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-4 bg-white text-left">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3 text-left">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                  <Receipt className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <DialogTitle className="text-base font-bold text-slate-900 truncate text-left">
+                    {t("modalTitle")}
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 mt-0.5 text-left">
+                    {t("invoiceCode")}:{" "}
+                    <span className="font-mono font-semibold text-slate-700">
+                      {payment.invoice_code}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shrink-0",
+                    statusBadge.bg
+                  )}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {statusBadge.label}
+                </span>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="shrink-0 space-y-4 border-b bg-gray-50/30 p-6">
-            {/* Payment Info Card */}
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-sm font-bold text-gray-900">Informasi Pembayaran</h3>
-              <div className="grid gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Invoice:</span>
-                  <span className="font-mono font-medium text-blue-600">
-                    {payment?.invoice_code}
-                  </span>
+          {/* Scrollable Content */}
+          <div className="flex-1 space-y-4 overflow-y-auto p-6 bg-slate-50/60">
+            {/* Payment Summary Box */}
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-2.5">
+                {t("paymentInfo")}
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[11px] block mb-0.5">{t("paymentMethod")}</span>
+                  <p className="font-medium text-slate-800 capitalize flex items-center gap-1.5">
+                    <CreditCard className="h-3.5 w-3.5 text-blue-600" />
+                    <span>{payment.payment_method || "Online Payment"}</span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Metode:</span>
-                  <span className="font-medium capitalize">{payment?.payment_method}</span>
+                <div>
+                  <span className="text-slate-400 text-[11px] block mb-0.5">{t("paymentDate")}</span>
+                  <p className="font-medium text-slate-800">
+                    {payment.created_at
+                      ? new Date(payment.created_at).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })
+                      : "—"}
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Status:</span>
-                  <span
-                    className={cn(
-                      "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
-                      payment?.status?.toLowerCase() === "success"
-                        ? "bg-green-100 text-green-700"
-                        : payment?.status?.toLowerCase() === "cancelled"
-                          ? "bg-gray-100 text-gray-700"
-                          : "bg-yellow-100 text-yellow-700"
-                    )}>
-                    {payment?.status}
-                  </span>
-                </div>
-                <div className="flex justify-between border-t border-gray-100 pt-2">
-                  <span className="font-semibold text-gray-900">Total Dibayar:</span>
-                  <span className="font-bold text-blue-600">
-                    {formatPrice(payment?.amount, payment?.currency)}
-                  </span>
+                <div className="col-span-2 sm:col-span-1">
+                  <span className="text-slate-400 text-[11px] block mb-0.5">{t("totalPaid")}</span>
+                  <p className="text-sm font-bold text-blue-600">
+                    {formatPrice(payment.amount)}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Status Summary Card */}
-            {(tourData || motorData) && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-blue-900">Booking Status</span>
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 capitalize">
-                    {payment?.service_type === "tour" ? tourData?.status : motorData?.status}
+            {/* Tour Itinerary Details */}
+            {isTour && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                      {t("itineraryPlan", { count: itineraryItems.length })}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                      {itinerary?.name || itinerary?.title || tourData?.itinerary?.name || "Tour Package"}
+                    </p>
+                  </div>
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-100">
+                    {tourData?.status || "Confirmed"}
                   </span>
+                </div>
+
+                {/* Timeline Items */}
+                {isLoadingTour || isLoadingItinerary ? (
+                  <div className="flex items-center justify-center p-6 text-slate-400">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : itineraryItems.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-slate-400">
+                    {locale === "en" ? "No itinerary schedule available" : "Rencana perjalanan tidak tersedia"}
+                  </div>
+                ) : (
+                  <div className="pt-1 space-y-1">
+                    {itineraryItems.map((item: any, idx: number) => (
+                      <DesktopTourItemDetail
+                        key={item.id || idx}
+                        item={item}
+                        dayNumber={idx + 1}
+                        startDate={startDate}
+                        locale={locale}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Motor Rental Details if applicable */}
+            {(payment?.service_type === "rent_motor" || Boolean(payment?.book_motor_id)) && motorData && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <Bike className="h-4 w-4" />
+                    </div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                      {locale === "en" ? "Motor Rental Service" : "Layanan Sewa Motor"}
+                    </h4>
+                  </div>
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-100 capitalize">
+                    {motorData?.status || "Ongoing"}
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {motorData.book_motor_items?.map((item: any, idx: number) => (
+                    <MotorItemRow
+                      key={item.id || idx}
+                      motorId={item.motor_id || item.motor?.id}
+                      qty={item.qty}
+                      price={item.price}
+                      subtotal={item.subtotal}
+                      formatPrice={formatPrice}
+                      variant="drawer"
+                    />
+                  ))}
+                </div>
+                  {motorData.start_date && motorData.end_date && (
+                    <div className="rounded-lg bg-blue-50/70 p-2.5 text-xs text-blue-800 font-medium flex items-center justify-between">
+                      <span>{locale === "en" ? "Rental Period:" : "Periode Sewa:"}</span>
+                      <span>
+                        {new Date(motorData.start_date).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })}{" "}
+                        -{" "}
+                        {new Date(motorData.end_date).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {motorData.booking_add_ons && motorData.booking_add_ons.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        {locale === "en" ? "Add-ons" : "Layanan Tambahan"} ({motorData.booking_add_ons.length})
+                      </p>
+                      {motorData.booking_add_ons.map((addon: any) => (
+                        <div key={addon.id} className="flex items-center justify-between text-xs text-slate-600 pl-1">
+                          <span className="truncate">{addon.name}</span>
+                          <span className="font-semibold text-slate-800">{formatPrice(addon.price)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {/* Entertainment Attraction Details */}
+            {isEntertainment && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                      <Ticket className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        {locale === "en" ? "Attraction Tickets" : "Tiket Atraksi"}
+                      </h4>
+                      {attractionTitle ? (
+                        <p className="text-xs font-bold text-slate-900 mt-0.5 truncate">
+                          {attractionTitle}
+                        </p>
+                      ) : null}
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                        {(entertainmentData?.book_entertainment_attraction_items || []).length}{" "}
+                        {locale === "en" ? "ticket package(s)" : "paket tiket"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-100 capitalize shrink-0">
+                    {entertainmentData?.status || "Confirmed"}
+                  </span>
+                </div>
+
+                {isLoadingEntertainment ? (
+                  <div className="flex items-center justify-center p-6 text-slate-400">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : (entertainmentData?.book_entertainment_attraction_items || []).length === 0 ? (
+                  <div className="py-4 text-center text-xs text-slate-400">
+                    {locale === "en" ? "No ticket details available" : "Rincian tiket tidak tersedia"}
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {entertainmentData.book_entertainment_attraction_items.map((item: any, idx: number) => {
+                      const itemAttraction = item.entertainment_attraction_name || attractionTitle;
+                      return (
+                        <div
+                          key={item.id || idx}
+                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs gap-3">
+                          <div className="min-w-0 flex-1">
+                            {itemAttraction && (
+                              <p className="text-[11px] font-semibold text-blue-600 truncate mb-0.5 flex items-center gap-1">
+                                <Sparkles className="h-3 w-3 text-blue-500 shrink-0" />
+                                <span>{itemAttraction}</span>
+                              </p>
+                            )}
+                            <p className="font-bold text-xs text-slate-800 truncate">
+                              {item.ticket_name || `Ticket ${idx + 1}`}
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {locale === "en" ? "Qty" : "Jumlah"}: {item.qty}
+                            </p>
+                          </div>
+                          <p className="font-bold text-slate-900 shrink-0">
+                            {formatPrice(item.subtotal || item.unit_price * item.qty || 0)}
+                          </p>
+                        </div>
+                      );
+                    })}
+
+                    {/* Visit date if available */}
+                    {visitDateFormatted && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900 flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                        <span className="font-semibold">
+                          {locale === "en" ? "Visit Date:" : "Tanggal Kunjungan:"}
+                        </span>
+                        <span className="font-medium">{visitDateFormatted}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Document Visa Details */}
+            {isDocumentVisa && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        {locale === "en" ? "Document & Visa Details" : "Layanan Dokumen & Visa"}
+                      </h4>
+                      <p className="text-xs font-bold text-slate-900 mt-0.5 truncate">
+                        {documentVisaData?.document_visa_title ||
+                          (documentVisaData?.country_name
+                            ? `Visa ${documentVisaData.country_name}`
+                            : "Document & Visa Application")}
+                      </p>
+                      {documentVisaData?.country_name && (
+                        <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 truncate">
+                          <MapPin className="h-3 w-3 text-red-500 shrink-0" />
+                          <span>{documentVisaData.country_name}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-100 capitalize shrink-0">
+                    {documentVisaData?.status
+                      ? String(documentVisaData.status).replace(/_/g, " ")
+                      : "Confirmed"}
+                  </span>
+                </div>
+
+                {isLoadingDocumentVisa ? (
+                  <div className="flex items-center justify-center p-6 text-slate-400">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Items / Packages List */}
+                    {documentVisaData?.items && documentVisaData.items.length > 0 ? (
+                      documentVisaData.items.map((item: any, idx: number) => (
+                        <div
+                          key={item.id || idx}
+                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-xs text-slate-800 truncate">
+                              {item.package_name || documentVisaData?.package_name || `Visa Package`}
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {locale === "en" ? "Qty" : "Jumlah"}: {item.qty} {locale === "en" ? "applicant(s)" : "pemohon"} × {formatPrice(item.unit_price)}
+                            </p>
+                          </div>
+                          <p className="font-bold text-slate-900 shrink-0">
+                            {formatPrice(item.subtotal || item.unit_price * item.qty || 0)}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-xs text-slate-800 truncate">
+                            {documentVisaData?.package_name || "Visa Package"}
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {locale === "en" ? "Applicant(s)" : "Jumlah Pemohon"}: {documentVisaData?.applicant_count || 1}
+                          </p>
+                        </div>
+                        <p className="font-bold text-slate-900 shrink-0">
+                          {formatPrice(documentVisaData?.total_price || payment.amount)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Target Travel Date Banner */}
+                    {documentVisaData?.target_travel_date && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900 flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                        <span className="font-semibold">
+                          {locale === "en" ? "Target Travel Date:" : "Target Keberangkatan:"}
+                        </span>
+                        <span className="font-medium">
+                          {formatDateSafe(documentVisaData.target_travel_date, locale)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Processing Time */}
+                    {documentVisaData?.processing_time_days ? (
+                      <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white p-2.5 text-xs text-slate-700">
+                        <span className="text-slate-500">
+                          {locale === "en" ? "Estimated Processing:" : "Estimasi Proses:"}
+                        </span>
+                        <span className="font-semibold">
+                          {documentVisaData.processing_time_days} {locale === "en" ? "working days" : "hari kerja"}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* Notes / Special Request */}
+                    {documentVisaData?.note ? (
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs space-y-1">
+                        <span className="font-semibold text-slate-600 block text-[11px]">
+                          {locale === "en" ? "Notes / Special Requests:" : "Catatan Khusus:"}
+                        </span>
+                        <p className="text-slate-700 leading-relaxed italic">{documentVisaData.note}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Booker Information */}
+            {booker && (booker.name || booker.email || booker.phone_number || booker.phone) && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <User className="h-3.5 w-3.5" />
+                  </div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                    {locale === "en" ? "Booker Information" : "Data Pemesan"}
+                  </h4>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {booker.name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">{locale === "en" ? "Name" : "Nama"}</span>
+                      <span className="font-semibold text-slate-800">{booker.name}</span>
+                    </div>
+                  )}
+                  {booker.email && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">{locale === "en" ? "Email" : "Email"}</span>
+                      <span className="font-semibold text-slate-800 break-all">{booker.email}</span>
+                    </div>
+                  )}
+                  {(booker.phone_number || booker.phone) && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">{locale === "en" ? "Phone" : "No. Telepon"}</span>
+                      <span className="font-semibold text-slate-800">{booker.phone_number || booker.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tourist / Visitor Details */}
+            {tourists && tourists.length > 0 && (
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <Users className="h-3.5 w-3.5" />
+                    </div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                      {isEntertainment
+                        ? locale === "en"
+                          ? "Visitor Details"
+                          : "Data Pengunjung"
+                        : isDocumentVisa
+                        ? locale === "en"
+                          ? "Applicant Details"
+                          : "Data Pemohon Visa"
+                        : locale === "en"
+                        ? "Traveler Details"
+                        : "Data Wisatawan"}
+                    </h4>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                    {tourists.length}{" "}
+                    {locale === "en"
+                      ? isDocumentVisa
+                        ? tourists.length === 1
+                          ? "applicant"
+                          : "applicants"
+                        : tourists.length === 1
+                        ? "person"
+                        : "people"
+                      : "orang"}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {tourists.map((tItem: any, tIdx: number) => {
+                    const tBirthDate = tItem.birth_date
+                      ? formatDateSafe(tItem.birth_date, locale)
+                      : null;
+                    return (
+                      <div
+                        key={tItem.id || tIdx}
+                        className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shrink-0">
+                              {tIdx + 1}
+                            </span>
+                            <span className="font-bold text-slate-800">
+                              {tItem.gender ? `${tItem.gender}. ` : ""}{tItem.name || tItem.full_name}
+                            </span>
+                          </div>
+                          {tIdx === 0 ? (
+                            <span className="rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                              {locale === "en" ? "Primary" : "Utama"}
+                            </span>
+                          ) : tItem.status ? (
+                            <span className="rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
+                              {tItem.status.replace(/_/g, " ")}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 text-[11px]">
+                          {(tItem.passport_number || tItem.passportNumber) && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">
+                                {locale === "en" ? "ID / Passport" : "No. Identitas / Paspor"}
+                              </span>
+                              <span className="font-mono font-medium text-slate-700">
+                                {tItem.passport_number || tItem.passportNumber}
+                              </span>
+                            </div>
+                          )}
+                          {tItem.nationality && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">
+                                {locale === "en" ? "Nationality" : "Kewarganegaraan"}
+                              </span>
+                              <span className="font-medium text-slate-700">{tItem.nationality}</span>
+                            </div>
+                          )}
+                          {(tItem.phone_number || tItem.phoneNumber) && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">
+                                {locale === "en" ? "Phone" : "No. Telepon"}
+                              </span>
+                              <span className="font-medium text-slate-700">
+                                {tItem.phone_number || tItem.phoneNumber}
+                              </span>
+                            </div>
+                          )}
+                          {tBirthDate && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">
+                                {locale === "en" ? "Date of Birth" : "Tanggal Lahir"}
+                              </span>
+                              <span className="font-medium text-slate-700">{tBirthDate}</span>
+                            </div>
+                          )}
+                          {tItem.occupation && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">
+                                {locale === "en" ? "Occupation" : "Pekerjaan"}
+                              </span>
+                              <span className="font-medium text-slate-700 capitalize">{tItem.occupation}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex-1 space-y-6 overflow-y-auto p-6 pb-24">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-              </div>
-            ) : (tourData || motorData) ? (
-              <div className="space-y-6">
-                {/* Detail Layanan Section */}
-                <div className="rounded-xl border border-gray-100 p-4">
-                   <h3 className="mb-4 text-sm font-bold text-gray-900">Detail Layanan</h3>
-                   <div className="space-y-4">
-                     {payment?.service_type === "tour" ? (
-                       tourData?.book_tour_items?.map((item: any) => (
-                         <div key={item.id} className="flex gap-4 rounded-xl border border-gray-50 p-3">
-                           <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                             {item.destination?.thumbnail ? (
-                               <img src={item.destination.thumbnail} alt="" className="h-full w-full object-cover" />
-                             ) : (
-                               <div className="flex h-full w-full items-center justify-center">
-                                 <Ticket className="h-5 w-5 text-gray-300" />
-                               </div>
-                             )}
-                           </div>
-                           <div className="flex flex-col justify-center">
-                             <h4 className="text-sm font-bold text-gray-900">{item.destination?.name}</h4>
-                             <p className="text-[10px] text-gray-500">{item.destination?.location}</p>
-                             <p className="mt-1 font-mono text-xs font-bold text-blue-600">
-                               {formatPrice(item.destination?.price, payment?.currency)}
-                             </p>
-                           </div>
-                         </div>
-                       ))
-                     ) : (
-                       motorData?.book_motor_items?.map((item: any) => (
-                         <div key={item.id} className="flex gap-4 rounded-xl border border-gray-50 p-3">
-                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                             {item.motor?.image ? (
-                               <img src={item.motor.image} alt="" className="h-full w-full object-cover" />
-                             ) : (
-                               <div className="flex h-full w-full items-center justify-center">
-                                 <Icon name="Bike" className="h-5 w-5 text-gray-300" />
-                               </div>
-                             )}
-                           </div>
-                           <div className="flex flex-col justify-center">
-                             <h4 className="text-sm font-bold text-gray-900">{item.motor?.name}</h4>
-                             <p className="text-[10px] text-gray-500">{item.motor?.brand?.name}</p>
-                             <p className="mt-1 font-mono text-xs font-bold text-blue-600">
-                               {formatPrice(item.motor?.price, payment?.currency)}
-                             </p>
-                             <p className="text-[10px] text-gray-400">Qty: {item.qty}</p>
-                           </div>
-                         </div>
-                       ))
-                     )}
-
-                     {payment?.service_type === "rent_motor" && motorData && (
-                       <div className="rounded-lg bg-blue-50 p-3 text-[10px] text-blue-700">
-                         <p>Periode Sewa: {new Date(motorData.start_date).toLocaleDateString()} - {new Date(motorData.end_date).toLocaleDateString()}</p>
-                       </div>
-                     )}
-                   </div>
-                </div>
-
-                {/* Itinerary Section Card (Only for Tours) */}
-                {payment?.service_type === "tour" && tourData && (
-                  <div className="rounded-xl border border-gray-100 p-4">
-                    <h3 className="mb-4 text-sm font-bold text-gray-900">
-                      Detail Itinerary ({tourData.book_tour_items?.length || 0} Destinasi)
-                    </h3>
-
-                    <div className="space-y-0">
-                      {[...(tourData.book_tour_items || [])]
-                        .sort((a: any, b: any) => {
-                          const dateA = new Date(a.visit_date).getTime();
-                          const dateB = new Date(b.visit_date).getTime();
-                          if (dateA !== dateB) return dateA - dateB;
-                          const seqA = new Date(a.created_at || 0).getTime();
-                          const seqB = new Date(b.created_at || 0).getTime();
-                          return seqA - seqB;
-                        })
-                        .map((item: any, idx: number) => (
-                          <TourItemDetail
-                            key={item.id}
-                            item={item}
-                            index={idx}
-                            locale={locale}
-                            dayNumber={idx + 1}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Fixed Bottom Cancel Button */}
-          {canCancel && (
-            <div className="shrink-0 border-t bg-white p-4">
+          {/* Footer Actions */}
+          <div className="shrink-0 border-t border-slate-100 bg-white px-6 py-4 flex items-center justify-between gap-3">
+            {canCancel ? (
               <Button
-                variant="destructive"
-                className="w-full"
+                type="button"
+                variant="ghost"
                 onClick={() => setShowCancelAlert(true)}
-                disabled={isCancelling}>
-                <Icon name="XCircle" className="mr-2 h-4 w-4" />
-                Cancel Payment
+                disabled={isCancelling}
+                className="rounded-xl text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 h-10 flex items-center gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t("cancelPayment")}</span>
               </Button>
-            </div>
-          )}
+            ) : (
+              <div />
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 px-5 h-10">
+              {t("close")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1867,26 +3189,18 @@ const OrderDetailModal = ({
       <AlertDialog open={showCancelAlert} onOpenChange={setShowCancelAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Payment?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this payment? This action cannot be undone. Your
-              booking will be reset to draft status.
+              {t("cancelConfirmDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCancelling}>No, Keep It</AlertDialogCancel>
+            <AlertDialogCancel disabled={isCancelling}>{t("cancelKeepBtn")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCancelPayment}
               disabled={isCancelling}
-              className="bg-red-600 hover:bg-red-700">
-              {isCancelling ? (
-                <>
-                  <Icon name="Loader2" className="mr-2 h-4 w-4 animate-spin" />
-                  Cancelling...
-                </>
-              ) : (
-                "Yes, Cancel Payment"
-              )}
+              className="bg-red-600 hover:bg-red-700 text-white font-medium">
+              {isCancelling ? t("cancelling") : t("cancelConfirmBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1897,40 +3211,71 @@ const OrderDetailModal = ({
 
 // My Orders Content Component (Payment History)
 const MyOrdersContent = () => {
+  const locale = useLocale();
+  const t = useTranslations("Orders");
   const currentCurrency = useSelector(
-    (state: any) => state.currency || { code: "IDR", idrToUsdRate: 1 / 16000 }
+    (state: any) => state.currency || { code: "IDR", symbol: "Rp", idrToUsdRate: 16000 }
   );
-  const selectedCurrency = currentCurrency.code as "IDR" | "USD";
-  const idrToUsdRate = currentCurrency.idrToUsdRate || 1 / 16000;
 
   const { data: paymentsData, isLoading, error } = useFindAllPaymentQuery();
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "success" | "history">("all");
+
+  const payments: any[] = paymentsData?.data || paymentsData?.datas || [];
+
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p: any) => {
+      const s = (p.status || "").toLowerCase();
+      if (activeTab === "all") return true;
+      if (activeTab === "success") {
+        return s === "success" || s === "succes" || s === "completed" || s === "paid";
+      }
+      if (activeTab === "history") {
+        return s === "failed" || s === "cancelled" || s === "expired";
+      }
+      return true;
+    });
+  }, [payments, activeTab]);
 
   const handleOpenDetail = (payment: any) => {
     setSelectedPayment(payment);
     setIsDetailOpen(true);
   };
 
-  const formatPrice = (amount: number) => {
-    const displayAmount = selectedCurrency === "USD" ? amount * idrToUsdRate : amount;
-    return new Intl.NumberFormat(selectedCurrency === "USD" ? "en-US" : "id-ID", {
-      style: "currency",
-      currency: selectedCurrency,
-      minimumFractionDigits: selectedCurrency === "USD" ? 2 : 0,
-      maximumFractionDigits: selectedCurrency === "USD" ? 2 : 0
-    }).format(displayAmount);
+  const formatPrice = (rawPrice: number) => {
+    let displayPrice = Number(rawPrice || 0);
+    if (currentCurrency.code !== "USD") {
+      displayPrice = displayPrice * (currentCurrency.idrToUsdRate || 1);
+    }
+    return new Intl.NumberFormat(
+      currentCurrency.code === "IDR"
+        ? "id-ID"
+        : currentCurrency.code === "TRY"
+        ? "tr-TR"
+        : "en-US",
+      {
+        style: "currency",
+        currency: currentCurrency.code,
+        maximumFractionDigits: currentCurrency.code === "IDR" ? 0 : 2
+      }
+    )
+      .format(displayPrice)
+      .replace("$", "US$ ");
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: any = {
-      pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-      success: { label: "Success", color: "bg-green-100 text-green-700" },
-      failed: { label: "Failed", color: "bg-red-100 text-red-700" }
-    };
-    return (
-      statusConfig[status.toLowerCase()] || { label: status, color: "bg-gray-100 text-gray-700" }
-    );
+    const s = (status || "").toLowerCase();
+    if (s === "success" || s === "succes" || s === "completed" || s === "paid") {
+      return { label: "Success", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+    if (s === "pending") {
+      return { label: "Pending", bg: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+    if (s === "cancelled" || s === "failed") {
+      return { label: s === "cancelled" ? "Cancelled" : "Failed", bg: "bg-red-50 text-red-700 border-red-200" };
+    }
+    return { label: status || "Draft", bg: "bg-slate-50 text-slate-700 border-slate-200" };
   };
 
   if (isLoading) {
@@ -1941,92 +3286,188 @@ const MyOrdersContent = () => {
     );
   }
 
-  if (error || !paymentsData?.data || paymentsData.data.length === 0) {
-    return (
-      <div className="py-12 text-center">
-        <Wallet className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-        <h3 className="text-lg font-medium text-gray-900">Belum ada pesanan</h3>
-        <p className="text-gray-500">Riwayat transaksi Anda akan muncul di sini</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-x-auto">
-      <h2 className="mb-6 text-2xl font-bold text-gray-900">Pesanan Saya</h2>
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-              Invoice Code
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-              Amount
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-              Currency
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-              Payment Method
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-              Status
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
-          {paymentsData.data.map((payment: any) => {
-            const status = getStatusBadge(payment.status);
-            return (
-              <tr key={payment.id} className="transition-colors hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="font-mono text-sm font-medium text-blue-600">
-                    {payment.invoice_code || payment.id}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-semibold whitespace-nowrap text-gray-900">
-                  {new Intl.NumberFormat(payment.currency === "USD" ? "en-US" : "id-ID", {
-                    minimumFractionDigits: payment.currency === "USD" ? 2 : 0,
-                    maximumFractionDigits: payment.currency === "USD" ? 2 : 0
-                  }).format(payment.amount)}
-                </td>
-                <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
-                  {payment.currency}
-                </td>
-                <td className="px-10 py-4 text-sm whitespace-nowrap text-gray-500">
-                  {payment.payment_method === "paypal" ? (
-                    <div className="items-center">
-                      <Image
-                        src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
-                        alt="PayPal"
-                        width={16}
-                        height={16}
-                        className="h-4 w-auto text-blue-500"
-                      />
-                      {/* <span>PayPal</span> */}
-                    </div>
-                  ) : (
-                    <span className="capitalize">{payment.payment_method}</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${status.color}`}>
-                      {status.label}
-                    </span>
-                    <button
-                      onClick={() => handleOpenDetail(payment)}
-                      className="rounded-full p-1 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600">
-                      <Icon name="Eye" className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-6">
+      {/* Header & Category Filter Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold text-slate-900">{t("title")}</h2>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200/60">
+              {filteredPayments.length}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">{t("subtitle")}</p>
+        </div>
+
+        <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200/60">
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all",
+              activeTab === "all"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-700"
+            )}>
+            {t("allTab")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("success")}
+            className={cn(
+              "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all",
+              activeTab === "success"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-700"
+            )}>
+            {t("successTab")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={cn(
+              "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all",
+              activeTab === "history"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-700"
+            )}>
+            {t("historyTab")}
+          </button>
+        </div>
+      </div>
+
+      {/* Table / Empty State */}
+      {filteredPayments.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 py-16 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-xs">
+            <Ticket className="h-7 w-7 text-blue-500" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 mb-1">{t("emptyTitle")}</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">{t("emptyDesc")}</p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-100 bg-slate-50/80">
+                <tr>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    {t("invoiceCode")}
+                  </th>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    Layanan
+                  </th>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    {t("paymentDate")}
+                  </th>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    {t("paymentMethod")}
+                  </th>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    {t("totalPaid")}
+                  </th>
+                  <th className="px-5 py-3.5 font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    Status
+                  </th>
+                  <th className="px-5 py-3.5 text-right font-semibold text-slate-600 uppercase tracking-wider text-[11px]">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPayments.map((payment: any) => {
+                  const status = getStatusBadge(payment.status);
+                  const isPending =
+                    payment.status?.toLowerCase() === "pending" ||
+                    payment.status?.toLowerCase() === "failed";
+
+                  return (
+                    <tr key={payment.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <span className="font-mono font-semibold text-slate-800 bg-slate-100 border border-slate-200/70 px-2.5 py-1 rounded-md">
+                          {payment.invoice_code || payment.id.slice(0, 15)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap font-medium text-slate-700">
+                        {payment.service_type === "document_visa" || Boolean(payment.book_document_visa_id)
+                          ? (locale === "en" ? "Document Visa" : "Dokumen Visa")
+                          : payment.service_type === "rent_motor" || Boolean(payment.book_motor_id)
+                          ? (locale === "en" ? "Motor Rental" : "Sewa Motor")
+                          : payment.service_type === "entertainment" || Boolean(payment.book_entertainment_attraction_id)
+                          ? (locale === "en" ? "Attraction Ticket" : "Tiket Atraksi")
+                          : (locale === "en" ? "Tour Package" : "Paket Tour")}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-slate-600">
+                        {payment.created_at
+                          ? new Date(payment.created_at).toLocaleDateString(
+                              locale === "en" ? "en-US" : "id-ID",
+                              { day: "numeric", month: "short", year: "numeric" }
+                            )
+                          : "—"}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <span className="capitalize font-medium text-slate-700 flex items-center gap-1.5">
+                          <CreditCard className="h-3.5 w-3.5 text-blue-600" />
+                          <span>{payment.payment_method || "PayPal"}</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap font-bold text-slate-900">
+                        {formatPrice(payment.amount)}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                            status.bg
+                          )}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenDetail(payment)}
+                            className="h-8 rounded-lg border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5">
+                            <Eye className="h-3.5 w-3.5 text-slate-500" />
+                            <span>{t("viewDetails")}</span>
+                          </Button>
+                          {isPending && (() => {
+                            const payType = payment.service_type === "document_visa" || Boolean(payment.book_document_visa_id)
+                              ? "document-visa"
+                              : payment.service_type === "rent_motor" || Boolean(payment.book_motor_id)
+                              ? "motor"
+                              : payment.service_type === "entertainment" || Boolean(payment.book_entertainment_attraction_id)
+                              ? "entertainment"
+                              : "tour";
+                            const payId = payment.service_type === "document_visa" || Boolean(payment.book_document_visa_id)
+                              ? (payment.book_document_visa_id || payment.id)
+                              : payment.id;
+                            return (
+                              <Link href={`/${locale}/payments?order_id=${payId}&type=${payType}`}>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 px-3">
+                                  Bayar
+                                </Button>
+                              </Link>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       <OrderDetailModal
@@ -2052,6 +3493,7 @@ const DesktopProfileView = ({
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }) => {
+  const tProfile = useTranslations("Profile");
   const { handleLogout, isLoading: isLoggingOut } = useLogout();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -2154,8 +3596,8 @@ const DesktopProfileView = ({
   const isSubmitting = isCreating || isUpdating;
 
   return (
-    <div className="bg-gray-50">
-      <div className="mx-auto mt-[50px] max-w-7xl px-4 py-8">
+    <div className="bg-gray-50 min-h-screen">
+      <div className="mx-auto pt-48 pb-24 max-w-7xl px-4">
         <div className="flex gap-8">
           {/* Sidebar */}
           <div className="w-64 shrink-0">
@@ -2184,7 +3626,7 @@ const DesktopProfileView = ({
                       : "text-gray-700 hover:bg-gray-50"
                   }`}>
                   <User className="h-5 w-5" />
-                  <span className="font-medium">Informasi Akun</span>
+                  <span className="font-medium">{tProfile("accountInfo")}</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("my-booking")}
@@ -2194,7 +3636,7 @@ const DesktopProfileView = ({
                       : "text-gray-700 hover:bg-gray-50"
                   }`}>
                   <Ticket className="h-5 w-5" />
-                  <span className="font-medium">My Booking</span>
+                  <span className="font-medium">{tProfile("myBooking")}</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("orders")}
@@ -2204,7 +3646,7 @@ const DesktopProfileView = ({
                       : "text-gray-700 hover:bg-gray-50"
                   }`}>
                   <Gift className="h-5 w-5" />
-                  <span className="font-medium">Pesanan Saya</span>
+                  <span className="font-medium">{tProfile("myOrders")}</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("tickets")}
@@ -2214,7 +3656,7 @@ const DesktopProfileView = ({
                       : "text-gray-700 hover:bg-gray-50"
                   }`}>
                   <Wallet className="h-5 w-5" />
-                  <span className="font-medium">Simpan Tiket</span>
+                  <span className="font-medium">{tProfile("savedTickets")}</span>
                 </button>
 
                 <button
@@ -2225,7 +3667,7 @@ const DesktopProfileView = ({
                       : "text-gray-700 hover:bg-gray-50"
                   }`}>
                   <Settings className="h-5 w-5" />
-                  <span className="font-medium">Pengaturan Akun</span>
+                  <span className="font-medium">{tProfile("accountSettings")}</span>
                 </button>
                 <button
                   onClick={handleLogout}
@@ -2233,7 +3675,7 @@ const DesktopProfileView = ({
                   className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50">
                   <LogOut className="h-5 w-5" />
                   <span className="font-medium">
-                    {isLoggingOut ? "Logging out..." : "Keluar Akun"}
+                    {isLoggingOut ? "Logging out..." : tProfile("logout")}
                   </span>
                 </button>
               </nav>

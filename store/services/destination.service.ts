@@ -1,4 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export interface DestinationTranslation {
   id: number;
@@ -7,8 +8,6 @@ export interface DestinationTranslation {
   name: string;
   slug: string;
   description: string;
-  thumbnail: string;
-  image: string[];
   detail_tour: string[];
   facilities: string[];
   createdAt: string;
@@ -18,16 +17,27 @@ export interface DestinationTranslation {
 export interface Destination {
   id: string;
   state_id: string;
+  city_id?: string;
+  city_name?: string;
+  country_id?: string;
   location: string;
   category_destination_id: string;
   category_destination_name: string;
   price: string;
+  thumbnail: string;
+  images: string[];
   translations: DestinationTranslation[];
 }
 
 export interface DestinationsResponse {
   message: string;
   data: Destination[];
+  meta?: {
+    page: number;
+    limit: number;
+    totalData: number;
+    totalPage: number;
+  };
 }
 
 export interface DestinationDetailResponse {
@@ -37,35 +47,32 @@ export interface DestinationDetailResponse {
 
 export const destinationService = createApi({
   reducerPath: "destinationService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    credentials: "include"
-  }),
+  baseQuery: baseQueryWithReauth,
   // find all destinations
   endpoints: (builder) => ({
     findAllDestination: builder.query<DestinationsResponse, void>({
       query: () => ({
-        url: "/destination/find-all-destination-with-translation",
+        url: "/destinations",
         method: "GET"
       })
     }),
     findDestinationBySlug: builder.query<DestinationDetailResponse, string>({
       query: (slug) => ({
-        url: `/destination/${slug}`,
+        url: `/destinations/slug/${slug}`,
         method: "GET"
       })
     }),
     // find all categories
     findCategoryDestinations: builder.query<any, void>({
       query: () => ({
-        url: "/destination/find-all-categories-destination",
+        url: "/destinations/categories",
         method: "GET"
       })
     }),
     // find destination id
     findDestinationId: builder.query<DestinationDetailResponse, string>({
       query: (id) => ({
-        url: `/destination/find/${id}`,
+        url: `/destinations/${id}`,
         method: "GET"
       })
     })

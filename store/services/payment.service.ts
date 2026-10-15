@@ -1,28 +1,24 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import Cookies from "js-cookie";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
 
 export const paymentService = createApi({
   reducerPath: "paymentService",
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    prepareHeaders: (headers) => {
-      const token = Cookies.get("travel_token");
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-    credentials: "include"
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Payments"],
   endpoints: (builder) => ({
     // create payment
     createPayment: builder.mutation<any, any>({
-      query: (data) => ({
-        url: "/payments/create",
-        method: "POST",
-        body: data
-      }),
+      query: (data) => {
+        const { idempotency_key, ...body } = data || {};
+        return {
+          url: "/payments",
+          method: "POST",
+          body,
+          headers: idempotency_key
+            ? { "Idempotency-Key": idempotency_key }
+            : undefined
+        };
+      },
       invalidatesTags: ["Payments"],
       // Manually invalidate bookTourService cache
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
@@ -31,15 +27,19 @@ export const paymentService = createApi({
           // Import bookTourService dynamically to avoid circular dependency
           const { bookTourService } = await import("./book-tour.service");
           const { bookMotorService } = await import("./book-motor.service");
+          const { bookEntertainmentAttractionService } = await import("./book-entertainment-attraction.service");
+          const { bookDocumentVisaService } = await import("./book-document-visa.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
           dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
+          dispatch(bookEntertainmentAttractionService.util.invalidateTags(["BookEntertainmentAttraction"]));
+          dispatch(bookDocumentVisaService.util.invalidateTags(["BookDocumentVisa"]));
         } catch {}
       }
     }),
     // capture payment
     capturePayment: builder.mutation<any, string>({
       query: (orderId) => ({
-        url: `/payments/capture/${orderId}`,
+        url: `/payments/${orderId}/capture`,
         method: "POST"
       }),
       invalidatesTags: ["Payments"],
@@ -48,16 +48,20 @@ export const paymentService = createApi({
           await queryFulfilled;
           const { bookTourService } = await import("./book-tour.service");
           const { bookMotorService } = await import("./book-motor.service");
+          const { bookEntertainmentAttractionService } = await import("./book-entertainment-attraction.service");
+          const { bookDocumentVisaService } = await import("./book-document-visa.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
           dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
+          dispatch(bookEntertainmentAttractionService.util.invalidateTags(["BookEntertainmentAttraction"]));
+          dispatch(bookDocumentVisaService.util.invalidateTags(["BookDocumentVisa"]));
         } catch {}
       }
     }),
     // cancel payment
     cancelPayment: builder.mutation<any, string>({
       query: (orderId) => ({
-        url: `/payments/cancel/${orderId}`,
-        method: "PUT"
+        url: `/payments/${orderId}/cancel`,
+        method: "PATCH"
       }),
       invalidatesTags: ["Payments"],
       // Manually invalidate bookTourService cache to update booking status in real-time
@@ -67,8 +71,12 @@ export const paymentService = createApi({
           // Import bookTourService dynamically to avoid circular dependency
           const { bookTourService } = await import("./book-tour.service");
           const { bookMotorService } = await import("./book-motor.service");
+          const { bookEntertainmentAttractionService } = await import("./book-entertainment-attraction.service");
+          const { bookDocumentVisaService } = await import("./book-document-visa.service");
           dispatch(bookTourService.util.invalidateTags(["BookTours"]));
           dispatch(bookMotorService.util.invalidateTags(["BookMotor"]));
+          dispatch(bookEntertainmentAttractionService.util.invalidateTags(["BookEntertainmentAttraction"]));
+          dispatch(bookDocumentVisaService.util.invalidateTags(["BookDocumentVisa"]));
         } catch {}
       }
     }),
@@ -93,7 +101,7 @@ export const paymentService = createApi({
     // find all payment
     findAllPayment: builder.query<any, void>({
       query: () => ({
-        url: "/payments/find-all",
+        url: "/payments",
         method: "GET"
       }),
       providesTags: ["Payments"]
