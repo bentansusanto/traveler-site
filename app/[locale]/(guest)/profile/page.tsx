@@ -3,6 +3,8 @@ import { ProfilePage } from "@/modules/Profile";
 import { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 
+import { Suspense } from "react";
+
 export function generateStaticParams() {
   return [{ locale: "en" }, { locale: "id" }];
 }
@@ -20,5 +22,9 @@ export default async function ProfilePageV1({ params }: { params: Promise<{ loca
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <ProfilePage />;
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ProfilePage />
+    </Suspense>
+  );
 }

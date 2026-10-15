@@ -12,6 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
+import { Suspense } from "react";
+
 export default async function PaymentPageV1({
   params,
   searchParams
@@ -26,5 +28,9 @@ export default async function PaymentPageV1({
     redirect(`/${locale}`);
   }
 
-  return <PaymentPage orderId={order_id} />;
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <PaymentPage orderId={order_id} />
+    </Suspense>
+  );
 }
