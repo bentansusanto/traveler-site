@@ -89,7 +89,10 @@ export const motorService = createApi({
       query: (params) => ({
         url: "/motors",
         method: "GET",
-        params: params || undefined
+        params: {
+          limit: 100,
+          ...(params || {}),
+        },
       }),
       providesTags: ["Motors"]
     }),
