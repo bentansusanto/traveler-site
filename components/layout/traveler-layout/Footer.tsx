@@ -1,4 +1,5 @@
 import { Facebook, Instagram, Youtube } from "lucide-react";
+import { useLocale } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -74,6 +75,7 @@ const socialMedia = [
 ];
 
 export const Footer = () => {
+  const locale = useLocale();
   const date = new Date().getFullYear();
   return (
     <div className="mt-3 border-t-2 border-dashed border-gray-200 bg-white px-5 py-10 pb-12 md:mt-10 md:border-t-0 md:bg-transparent md:px-8 md:pb-0 lg:mx-auto lg:max-w-5xl lg:px-0 xl:max-w-[80%]">
@@ -125,7 +127,7 @@ export const Footer = () => {
             <ul className="space-y-5">
               {footerLinks.products.map((list, idx) => (
                 <li key={idx} className="text-gray-600">
-                  <Link href={list.href}>{list.name}</Link>
+                  <Link href={`/${locale}${list.href}`}>{list.name}</Link>
                 </li>
               ))}
             </ul>
