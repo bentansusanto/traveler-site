@@ -1,65 +1,29 @@
 "use client";
 
-import { Bus, Clock, MapPin, Users, ShieldCheck, Ticket, Route } from "lucide-react";
-import { ServiceShowcasePage } from "../Shared/ServiceShowcasePage";
+import { Bus } from "lucide-react";
+import { ServiceCatalogTemplate } from "../Shared/ServiceCatalogTemplate";
 
 export const BusShuttlePage = () => {
   return (
-    <ServiceShowcasePage
-      serviceKey="busShuttle"
-      badge="Layanan Antar Kota & Shuttle Pariwisata"
-      title="Perjalanan Rombongan & Shuttle Antar Kota Nyaman"
-      subtitle="Solusi transportasi terpercaya untuk liburan keluarga, perjalanan ziarah, study tour, gathering perusahaan, hingga airport transfer bandara."
+    <ServiceCatalogTemplate
+      serviceName="Bus & Shuttle"
+      heroTitle="Perjalanan Nyaman Bersama Rombongan Anda"
+      heroSubtitle="Sewa bus pariwisata eksekutif dan shuttle antar kota dengan fasilitas lengkap dan driver berlisensi resmi."
       heroImage="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=2000&q=80"
       heroImageAlt="Bus dan Shuttle Pariwisata PacificTravelindo"
-      inquiryPlaceholder="Masukkan rute perjalanan (cth: Jakarta - Bandung, Bandara - Hotel, Wisata Bali)..."
-      popularSearches={["Bandara Shuttle", "Medium Bus 31 Seat", "Big Bus 50 Seat", "Hiace Luxury 10 Seat", "Tour Ziarah"]}
-      ctaTitle="Rencanakan Rute & Sewa Bus Rombongan Sekarang"
-      ctaSubtitle="Dapatkan estimasi biaya transparan dan armada terbaik sesuai kapasitas rombongan Anda dengan driver berlisensi."
-      features={[
-        {
-          icon: Bus,
-          title: "Varian Armada Lengkap",
-          description: "Mulai dari Microbus (Hiace/Elf), Medium Bus (25-35 kursi), hingga Big Bus Executive (45-59 kursi) ber-AC dingin dan fasilitas lengkap."
-        },
-        {
-          icon: Route,
-          title: "Rute Fleksibel & Custom",
-          description: "Perjalanan dapat disesuaikan dengan rencana itinerary Anda, baik shuttle point-to-point maupun keliling tempat wisata."
-        },
-        {
-          icon: Users,
-          title: "Crew & Driver Tersertifikasi",
-          description: "Pengemudi berpengalaman jarak jauh dengan jam terbang tinggi serta mengutamakan keselamatan penumpang."
-        },
-        {
-          icon: ShieldCheck,
-          title: "Legalitas & Uji KIR Resmi",
-          description: "Armada kami memiliki dokumen operasional resmi, lulus uji kelaikan jalan (KIR), dan terawat prima."
-        }
+      searchPlaceholder="Cari rute bus atau shuttle..."
+      catalogTitle="Pilihan Armada Bus & Shuttle"
+      catalogSubtitle="Pilih kapasitas armada yang tepat untuk perjalanan keluarga atau rombongan Anda"
+      icon={Bus}
+      categories={[
+        { id: "all", name: "Semua Armada", count: 0 },
+        { id: "microbus", name: "Microbus (Hiace/Elf)", count: 0 },
+        { id: "medium_bus", name: "Medium Bus (29-35 Seat)", count: 0 },
+        { id: "big_bus", name: "Big Bus (45-59 Seat)", count: 0 },
+        { id: "airport_shuttle", name: "Airport Shuttle", count: 0 }
       ]}
-      faqs={[
-        {
-          question: "Berapa kapasitas penumpang yang tersedia untuk armada bus?",
-          answer:
-            "Kami menyediakan Toyota Hiace (10-14 kursi), Isuzu Elf (15-19 kursi), Medium Bus (29-35 kursi), dan Big Bus SHD/HDD (45-59 kursi)."
-        },
-        {
-          question: "Fasilitas apa saja yang ada di dalam armada bus pariwisata?",
-          answer:
-            "Fasilitas mencakup AC double blower, reclining seats, USB charger di setiap kursi, audio/karaoke, TV LED, bagasi luas, dan kotak P3K standar."
-        },
-        {
-          question: "Apakah bisa melayani sewa bus untuk perjalanan luar kota atau pulau?",
-          answer:
-            "Tentu saja! Kami melayani perjalanan antar kota di seluruh pulau Jawa, Bali, Lombok, Sumatera, hingga rute khusus perjalanan religi atau gathering instansi."
-        },
-        {
-          question: "Bagaimana alur pemesanan dan pembayaran sewa bus?",
-          answer:
-            "Konsultasikan tanggal dan rute rombongan Anda melalui konsultan kami untuk menerima quotation resmi, dilanjutkan pembayaran deposit untuk penguncian unit armada."
-        }
-      ]}
+      emptyTitle="Tidak ada rute atau armada ditemukan"
+      emptyDesc="Data jadwal bus dan rute shuttle belum tersedia atau sedang dalam proses integrasi backend. Cek kembali dalam waktu dekat."
     />
   );
 };
