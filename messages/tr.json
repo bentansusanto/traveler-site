@@ -1006,5 +1006,110 @@
     "nationalityRequired": "Uyruk zorunludur",
     "passportRequired": "Pasaport numarası zorunludur",
     "minOneApplicant": "En az 1 başvuru sahibi zorunludur"
+  },
+  "ServicesShared": {
+    "filterTitle": "Filtrele ve Sırala",
+    "activeFilters": "aktif",
+    "reset": "Sıfırla",
+    "resetAll": "Tümünü Sıfırla",
+    "filterSort": "Sıralama",
+    "sortLatest": "En Yeni Araçlar",
+    "sortLowestPrice": "Fiyat: En Düşük",
+    "sortHighestPrice": "Fiyat: En Yüksek",
+    "sortPopular": "En Popüler",
+    "categoriesTitle": "Öne Çıkan Kategoriler",
+    "searchBtn": "Ara",
+    "showingResults": "{count} sonuç gösteriliyor",
+    "applyFilter": "Filtreyi Uygula",
+    "resetFilter": "Filtreyi Sıfırla",
+    "back": "Geri"
+  },
+  "RentCar": {
+    "serviceName": "Araç Kiralama",
+    "heroTitle": "Her Rotayı Konforlu Araçlarla Keşfedin",
+    "heroSubtitle": "Bakımlı araç filosu, şeffaf fiyatlandırma, şoförsüz veya profesyonel şoförlü seçeneklerle konforlu araç kiralama.",
+    "searchPlaceholder": "Araç modeli veya teslim alma konumu ara...",
+    "catalogTitle": "En İyi Araç Seçenekleri",
+    "catalogSubtitle": "Tatiliniz veya iş seyahatiniz için en uygun aracı seçin",
+    "emptyTitle": "Araç bulunamadı",
+    "emptyDesc": "Kiralık araç verileri arka uç sistemi ile entegre edilmektedir. Lütfen farklı anahtar kelimeler deneyin veya daha sonra tekrar kontrol edin.",
+    "categories": {
+      "all": "Tüm Kategoriler",
+      "family_mpv": "Aile MPV",
+      "luxury_mpv": "Lüks MPV",
+      "suv": "SUV & 4x4",
+      "city_car": "Şehir Arabası",
+      "sedan": "Executive Sedan"
+    }
+  },
+  "BusShuttle": {
+    "serviceName": "Otobüs & Servis",
+    "heroTitle": "Grubunuzla Birlikte Konforlu Yolculuk",
+    "heroSubtitle": "Kapsamlı olanaklara ve lisanslı şoförlere sahip özel turizm otobüsleri ve şehirlerarası servis transferleri.",
+    "searchPlaceholder": "Otobüs güzergahı veya servis noktası ara...",
+    "catalogTitle": "Otobüs & Servis Filosu Seçenekleri",
+    "catalogSubtitle": "Aileniz veya tur grubunuz için ideal araç kapasitesini seçin",
+    "emptyTitle": "Otobüs veya güzergah bulunamadı",
+    "emptyDesc": "Otobüs seferleri ve servis güzergahları arka uç sistemi ile entegre edilmektedir. Lütfen yakında tekrar kontrol edin.",
+    "categories": {
+      "all": "Tüm Filo",
+      "microbus": "Mikrobus (Hiace/Elf)",
+      "medium_bus": "Orta Boy Otobüs (29-35 Koltuk)",
+      "big_bus": "Büyük Otobüs (45-59 Koltuk)",
+      "airport_shuttle": "Havalimanı Servisi"
+    }
+  },
+  "Flight": {
+    "serviceName": "Uçak Bileti",
+    "heroTitle": "Dünyanın Dört Bir Yanına Güvenle Uçun",
+    "heroSubtitle": "Resmi IATA güvencesiyle yurt içi ve yurt dışı uçak biletlerini en uygun fiyatlar ve esnek rotalarla ayırtın.",
+    "searchPlaceholder": "Kalkış şehri, varış noktası veya havayolu ara...",
+    "catalogTitle": "Mevcut Uçuş Seferleri",
+    "catalogSubtitle": "Seyahat planınıza en uygun uçuş saatlerini seçin",
+    "emptyTitle": "Uçuş bulunamadı",
+    "emptyDesc": "Uçuş tarifeleri ve havayolu kontenjanları arka uç sistemi ile entegre edilmektedir. Lütfen daha sonra tekrar kontrol edin.",
+    "categories": {
+      "all": "Tüm Rotalar",
+      "domestic": "Yurt İçi Uçuşlar",
+      "international": "Yurt Dışı Uçuşlar",
+      "umrah_haji": "Umre & Hac Rotaları",
+      "transit": "Popüler Aktarma Rotaları"
+    }
+  },
+  "Hotels": {
+    "serviceName": "Otel & Tatil Köyü",
+    "heroTitle": "Hayalinizdeki Destinasyonda En İyi Konaklama",
+    "heroSubtitle": "Anında onaylı kupon garantisi ve özel fiyatlarla butik oteller, sahil tatil köyleri ve yıldızlı konaklama seçenekleri.",
+    "searchPlaceholder": "Otel, şehir veya bölge ara...",
+    "catalogTitle": "Öne Çıkan Otel & Tatil Köyleri",
+    "catalogSubtitle": "Keyifli ve dinlendirici bir tatil için en doğru konaklamayı seçin",
+    "emptyTitle": "Otel bulunamadı",
+    "emptyDesc": "Oda fiyatları ve otel müsaitliği arka uç sistemi ile entegre edilmektedir. Lütfen yakında tekrar kontrol edin.",
+    "categories": {
+      "all": "Tüm Kategoriler",
+      "star_5": "5 Yıldızlı Lüks Oteller",
+      "star_4": "4 Yıldızlı Oteller",
+      "resort": "Tatil Köyü & Villa",
+      "boutique": "Butik & Mağara Oteller",
+      "budget": "Akıllı Ekonomik Oteller"
+    }
+  },
+  "HealthTourism": {
+    "serviceName": "Sağlık & Medikal Turizmi",
+    "heroTitle": "Tatilinizi Yaparken Dünya Standartlarında Tedavi",
+    "heroSubtitle": "JCI akreditasyonlu hastanelerde Türkiye saç ekimi, estetik diş, medikal check-up ve termal wellness için eksiksiz paketler.",
+    "searchPlaceholder": "Tedavi, klinik veya şehir ara...",
+    "catalogTitle": "Medikal & Wellness Paketleri",
+    "catalogSubtitle": "İhtiyaçlarınıza uygun tıbbi prosedürleri ve sağlıklı yaşam programlarını seçin",
+    "emptyTitle": "Medikal paket bulunamadı",
+    "emptyDesc": "Medikal paketler ve klinik randevuları arka uç sistemi ile entegre edilmektedir. Lütfen yakında tekrar kontrol edin.",
+    "categories": {
+      "all": "Tüm Kategoriler",
+      "hair_transplant": "Saç Ekimi (Türkiye)",
+      "dental": "Diş & Estetik Gülüş",
+      "checkup": "Kapsamlı Check-Up",
+      "wellness": "Termal Spa & Sağlıklı Yaşam",
+      "eye_care": "Göz Lazer & Uzmanlık"
+    }
   }
 }

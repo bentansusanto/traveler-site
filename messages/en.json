@@ -1009,5 +1009,110 @@
     "nationalityRequired": "Nationality is required",
     "passportRequired": "Passport number is required",
     "minOneApplicant": "At least 1 applicant is required"
+  },
+  "ServicesShared": {
+    "filterTitle": "Filter & Sort",
+    "activeFilters": "active",
+    "reset": "Reset",
+    "resetAll": "Reset All",
+    "filterSort": "Sort By",
+    "sortLatest": "Latest Units",
+    "sortLowestPrice": "Price: Low to High",
+    "sortHighestPrice": "Price: High to Low",
+    "sortPopular": "Most Popular",
+    "categoriesTitle": "Featured Categories",
+    "searchBtn": "Search",
+    "showingResults": "Showing {count} items",
+    "applyFilter": "Apply Filter",
+    "resetFilter": "Reset Filter",
+    "back": "Back"
+  },
+  "RentCar": {
+    "serviceName": "Car Rental",
+    "heroTitle": "Explore Every Destination in Comfort",
+    "heroSubtitle": "Convenient car rentals, well-maintained fleets, and transparent pricing with self-drive or professional driver options.",
+    "searchPlaceholder": "Search car models or pickup location...",
+    "catalogTitle": "Top Car Fleet Options",
+    "catalogSubtitle": "Choose the perfect car tailored for your vacation or business trip",
+    "emptyTitle": "No cars found",
+    "emptyDesc": "Car rental units are currently being integrated with backend services. Please try other search keywords or check back soon.",
+    "categories": {
+      "all": "All Categories",
+      "family_mpv": "Family MPV",
+      "luxury_mpv": "Luxury MPV",
+      "suv": "SUV & 4x4",
+      "city_car": "Compact City Car",
+      "sedan": "Executive Sedan"
+    }
+  },
+  "BusShuttle": {
+    "serviceName": "Bus & Shuttle",
+    "heroTitle": "Travel Comfortably With Your Group",
+    "heroSubtitle": "Executive charter buses and intercity shuttle services with comprehensive amenities and certified drivers.",
+    "searchPlaceholder": "Search bus routes or shuttle points...",
+    "catalogTitle": "Bus & Shuttle Fleet Options",
+    "catalogSubtitle": "Select the ideal vehicle capacity for your family outings or group tours",
+    "emptyTitle": "No buses or routes found",
+    "emptyDesc": "Bus schedules and shuttle routes are currently being integrated with backend services. Please check back soon.",
+    "categories": {
+      "all": "All Fleets",
+      "microbus": "Microbus (Hiace/Elf)",
+      "medium_bus": "Medium Bus (29-35 Seats)",
+      "big_bus": "Big Bus (45-59 Seats)",
+      "airport_shuttle": "Airport Shuttle"
+    }
+  },
+  "Flight": {
+    "serviceName": "Flight Tickets",
+    "heroTitle": "Fly Across the Globe with Ease",
+    "heroSubtitle": "Book domestic and international airline tickets with optimized routes and competitive fares backed by official IATA certification.",
+    "searchPlaceholder": "Search departure city, destination, or airline...",
+    "catalogTitle": "Available Flight Schedules",
+    "catalogSubtitle": "Choose flight schedules tailored to your travel itinerary",
+    "emptyTitle": "No flights found",
+    "emptyDesc": "Flight schedules and airline quotas are currently being integrated with backend services. Please check back later.",
+    "categories": {
+      "all": "All Routes",
+      "domestic": "Domestic Flights",
+      "international": "International Flights",
+      "umrah_haji": "Umrah & Hajj Routes",
+      "transit": "Popular Transit Routes"
+    }
+  },
+  "Hotels": {
+    "serviceName": "Hotels & Resorts",
+    "heroTitle": "Find the Best Stay in Your Dream Destination",
+    "heroSubtitle": "Boutique hotels, beachfront resorts, and star-rated accommodations with guaranteed instant vouchers and trusted rates.",
+    "searchPlaceholder": "Search hotel, city, or destination...",
+    "catalogTitle": "Featured Hotels & Resorts",
+    "catalogSubtitle": "Pick the right accommodation for a rejuvenating holiday experience",
+    "emptyTitle": "No hotels found",
+    "emptyDesc": "Room rates and hotel availability are currently being integrated with backend services. Please check back soon.",
+    "categories": {
+      "all": "All Categories",
+      "star_5": "5-Star Luxury Hotels",
+      "star_4": "4-Star Hotels",
+      "resort": "Resorts & Villas",
+      "boutique": "Boutique & Cave Hotels",
+      "budget": "Smart Budget Hotels"
+    }
+  },
+  "HealthTourism": {
+    "serviceName": "Health & Medical Tourism",
+    "heroTitle": "World-Class Medical Care While on Vacation",
+    "heroSubtitle": "Comprehensive packages for Turkey hair transplants, cosmetic dentistry, medical check-ups, and wellness retreats in JCI-accredited facilities.",
+    "searchPlaceholder": "Search medical treatments, clinics, or cities...",
+    "catalogTitle": "Medical & Wellness Packages",
+    "catalogSubtitle": "Select medical procedures and wellness programs suited to your needs",
+    "emptyTitle": "No medical packages found",
+    "emptyDesc": "Medical packages and clinic schedules are currently being integrated with backend services. Please check back soon.",
+    "categories": {
+      "all": "All Categories",
+      "hair_transplant": "Hair Transplant (Turkey)",
+      "dental": "Dental & Aesthetic Smile",
+      "checkup": "Global Health Check-Up",
+      "wellness": "Thermal Spa & Wellness",
+      "eye_care": "Eye LASIK & Specialists"
+    }
   }
 }

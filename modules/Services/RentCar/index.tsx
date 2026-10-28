@@ -1,30 +1,33 @@
 "use client";
 
 import { Car } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ServiceCatalogTemplate } from "../Shared/ServiceCatalogTemplate";
 
 export const RentCarPage = () => {
+  const t = useTranslations("RentCar");
+
   return (
     <ServiceCatalogTemplate
-      serviceName="Rental Mobil"
-      heroTitle="Jelajahi Setiap Destinasi Bersama Mobil Pilihan"
-      heroSubtitle="Sewa mobil nyaman, armada terawat, dan harga transparan dengan opsi lepas kunci atau supir profesional."
+      serviceName={t("serviceName")}
+      heroTitle={t("heroTitle")}
+      heroSubtitle={t("heroSubtitle")}
       heroImage="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=2000&q=80"
-      heroImageAlt="Rental Mobil PacificTravelindo"
-      searchPlaceholder="Cari mobil atau lokasi..."
-      catalogTitle="Pilihan Mobil Terbaik"
-      catalogSubtitle="Pilih mobil yang pas untuk perjalanan liburan atau dinas Anda"
+      heroImageAlt={t("serviceName")}
+      searchPlaceholder={t("searchPlaceholder")}
+      catalogTitle={t("catalogTitle")}
+      catalogSubtitle={t("catalogSubtitle")}
       icon={Car}
       categories={[
-        { id: "all", name: "Semua Kategori", count: 0 },
-        { id: "family_mpv", name: "Family MPV", count: 0 },
-        { id: "luxury_mpv", name: "Luxury MPV", count: 0 },
-        { id: "suv", name: "SUV & 4x4", count: 0 },
-        { id: "city_car", name: "Compact City Car", count: 0 },
-        { id: "sedan", name: "Executive Sedan", count: 0 }
+        { id: "all", name: t("categories.all"), count: 0 },
+        { id: "family_mpv", name: t("categories.family_mpv"), count: 0 },
+        { id: "luxury_mpv", name: t("categories.luxury_mpv"), count: 0 },
+        { id: "suv", name: t("categories.suv"), count: 0 },
+        { id: "city_car", name: t("categories.city_car"), count: 0 },
+        { id: "sedan", name: t("categories.sedan"), count: 0 }
       ]}
-      emptyTitle="Tidak ada mobil ditemukan"
-      emptyDesc="Data unit rental mobil belum tersedia atau sedang dalam proses integrasi backend. Coba ubah kata kunci pencarian atau cek kembali nanti."
+      emptyTitle={t("emptyTitle")}
+      emptyDesc={t("emptyDesc")}
     />
   );
 };

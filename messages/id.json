@@ -1009,5 +1009,110 @@
     "nationalityRequired": "Kewarganegaraan wajib diisi",
     "passportRequired": "Nomor paspor wajib diisi",
     "minOneApplicant": "Minimal 1 pemohon wajib diisi"
+  },
+  "ServicesShared": {
+    "filterTitle": "Filter & Urutkan",
+    "activeFilters": "filter aktif",
+    "reset": "Reset",
+    "resetAll": "Reset Semua",
+    "filterSort": "Urutkan Berdasarkan",
+    "sortLatest": "Unit Terbaru",
+    "sortLowestPrice": "Harga: Termurah",
+    "sortHighestPrice": "Harga: Termahal",
+    "sortPopular": "Paling Populer",
+    "categoriesTitle": "Kategori Pilihan",
+    "searchBtn": "Cari",
+    "showingResults": "Menampilkan {count} data",
+    "applyFilter": "Terapkan Filter",
+    "resetFilter": "Reset Filter",
+    "back": "Kembali"
+  },
+  "RentCar": {
+    "serviceName": "Rental Mobil",
+    "heroTitle": "Jelajahi Setiap Destinasi Bersama Mobil Pilihan",
+    "heroSubtitle": "Sewa mobil nyaman, armada terawat, dan harga transparan dengan opsi lepas kunci atau supir profesional.",
+    "searchPlaceholder": "Cari tipe mobil atau lokasi...",
+    "catalogTitle": "Pilihan Mobil Terbaik",
+    "catalogSubtitle": "Pilih mobil yang pas untuk perjalanan liburan atau dinas Anda",
+    "emptyTitle": "Tidak ada mobil ditemukan",
+    "emptyDesc": "Data unit rental mobil belum tersedia atau sedang dalam proses integrasi backend. Coba ubah kata kunci pencarian atau cek kembali nanti.",
+    "categories": {
+      "all": "Semua Kategori",
+      "family_mpv": "Family MPV",
+      "luxury_mpv": "Luxury MPV",
+      "suv": "SUV & 4x4",
+      "city_car": "Compact City Car",
+      "sedan": "Executive Sedan"
+    }
+  },
+  "BusShuttle": {
+    "serviceName": "Bus & Shuttle",
+    "heroTitle": "Perjalanan Nyaman Bersama Rombongan Anda",
+    "heroSubtitle": "Sewa bus pariwisata eksekutif dan shuttle antar kota dengan fasilitas lengkap dan driver berlisensi resmi.",
+    "searchPlaceholder": "Cari rute bus atau shuttle...",
+    "catalogTitle": "Pilihan Armada Bus & Shuttle",
+    "catalogSubtitle": "Pilih kapasitas armada yang tepat untuk perjalanan keluarga atau rombongan Anda",
+    "emptyTitle": "Tidak ada rute atau armada ditemukan",
+    "emptyDesc": "Data jadwal bus dan rute shuttle belum tersedia atau sedang dalam proses integrasi backend. Cek kembali dalam waktu dekat.",
+    "categories": {
+      "all": "Semua Armada",
+      "microbus": "Microbus (Hiace/Elf)",
+      "medium_bus": "Medium Bus (29-35 Seat)",
+      "big_bus": "Big Bus (45-59 Seat)",
+      "airport_shuttle": "Airport Shuttle"
+    }
+  },
+  "Flight": {
+    "serviceName": "Tiket Pesawat",
+    "heroTitle": "Terbang ke Seluruh Penjuru Dunia",
+    "heroSubtitle": "Pesan tiket penerbangan domestik dan internasional dengan rute optimal dan harga terbaik berlisensi resmi IATA.",
+    "searchPlaceholder": "Cari kota asal, destinasi, atau maskapai...",
+    "catalogTitle": "Daftar Penerbangan Tersedia",
+    "catalogSubtitle": "Pilih jadwal terbang sesuai rencana perjalanan Anda",
+    "emptyTitle": "Tidak ada penerbangan ditemukan",
+    "emptyDesc": "Data jadwal maskapai dan kuota penerbangan belum tersedia atau sedang dalam proses integrasi backend. Cek kembali nanti.",
+    "categories": {
+      "all": "Semua Rute",
+      "domestic": "Penerbangan Domestik",
+      "international": "Penerbangan Internasional",
+      "umrah_haji": "Rute Umrah & Haji",
+      "transit": "Rute Transit Populer"
+    }
+  },
+  "Hotels": {
+    "serviceName": "Hotel & Resort",
+    "heroTitle": "Temukan Akomodasi Terbaik di Lokasi Impian",
+    "heroSubtitle": "Pilihan hotel butik, resor tepi pantai, dan penginapan berbintang dengan jaminan voucher instan dan rate terpercaya.",
+    "searchPlaceholder": "Cari hotel, kota, atau daerah tujuan...",
+    "catalogTitle": "Pilihan Hotel & Resort",
+    "catalogSubtitle": "Pilih hotel yang pas untuk istirahat nyaman selama liburan Anda",
+    "emptyTitle": "Tidak ada hotel ditemukan",
+    "emptyDesc": "Data kamar dan ketersediaan hotel belum tersedia atau sedang dalam proses integrasi backend. Cek kembali nanti.",
+    "categories": {
+      "all": "Semua Kategori",
+      "star_5": "Hotel Bintang 5",
+      "star_4": "Hotel Bintang 4",
+      "resort": "Resort & Villa",
+      "boutique": "Boutique & Cave Hotel",
+      "budget": "Smart Budget Hotel"
+    }
+  },
+  "HealthTourism": {
+    "serviceName": "Wisata Medis & Kesehatan",
+    "heroTitle": "Perawatan Medis Berstandar Dunia Sambil Berlibur",
+    "heroSubtitle": "Paket terpadu transplantasi rambut di Turki, estetika gigi, medical check up, dan pemulihan wellness berstandar rumah sakit JCI.",
+    "searchPlaceholder": "Cari perawatan, klinik, atau kota...",
+    "catalogTitle": "Pilihan Paket Medis & Wellness",
+    "catalogSubtitle": "Pilih tindakan medis dan program wellness sesuai kebutuhan Anda",
+    "emptyTitle": "Tidak ada paket medis ditemukan",
+    "emptyDesc": "Data paket medis dan jadwal klinik belum tersedia atau sedang dalam proses integrasi backend. Cek kembali nanti.",
+    "categories": {
+      "all": "Semua Kategori",
+      "hair_transplant": "Hair Transplant (Turki)",
+      "dental": "Dental & Estetik Gigi",
+      "checkup": "Medical Check Up Global",
+      "wellness": "Thermal Spa & Wellness",
+      "eye_care": "Eye LASIK & Spesialis"
+    }
   }
 }

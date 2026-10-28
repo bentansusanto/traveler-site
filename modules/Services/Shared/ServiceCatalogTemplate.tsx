@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ChevronLeft,
   Search,
@@ -53,11 +53,12 @@ export const ServiceCatalogTemplate = ({
   catalogTitle,
   catalogSubtitle,
   icon: ServiceIcon,
-  categories = [{ id: "all", name: "Semua Kategori", count: 0 }],
+  categories = [{ id: "all", name: "All", count: 0 }],
   emptyTitle,
   emptyDesc
 }: ServiceCatalogPageProps) => {
   const locale = useLocale();
+  const tShared = useTranslations("ServicesShared");
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,10 +67,10 @@ export const ServiceCatalogTemplate = ({
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const sortOptions = [
-    { id: "latest", label: "Unit Terbaru", icon: Sparkles },
-    { id: "price_asc", label: "Harga: Termurah", icon: ArrowDownNarrowWide },
-    { id: "price_desc", label: "Harga: Termahal", icon: ArrowUpNarrowWide },
-    { id: "popular", label: "Paling Populer", icon: Flame }
+    { id: "latest", label: tShared("sortLatest"), icon: Sparkles },
+    { id: "price_asc", label: tShared("sortLowestPrice"), icon: ArrowDownNarrowWide },
+    { id: "price_desc", label: tShared("sortHighestPrice"), icon: ArrowUpNarrowWide },
+    { id: "popular", label: tShared("sortPopular"), icon: Flame }
   ];
 
   const activeFilterCount =
@@ -80,8 +81,6 @@ export const ServiceCatalogTemplate = ({
     setActiveCategory("all");
     setSortBy("latest");
   };
-
-  const isId = locale === "id";
 
   // Reusable Filter Sidebar Content
   const renderFilterContent = (isMobileDrawer = false) => (
@@ -99,12 +98,10 @@ export const ServiceCatalogTemplate = ({
               <SlidersHorizontal className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                {isId ? "Filter & Urutkan" : "Filter & Sort"}
-              </h3>
+              <h3 className="text-sm font-bold text-slate-900">{tShared("filterTitle")}</h3>
               {activeFilterCount > 0 && (
                 <span className="text-[11px] font-semibold text-blue-600">
-                  {activeFilterCount} {isId ? "filter aktif" : "active"}
+                  {activeFilterCount} {tShared("activeFilters")}
                 </span>
               )}
             </div>
@@ -117,7 +114,7 @@ export const ServiceCatalogTemplate = ({
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
             >
               <RotateCcw className="h-3 w-3" />
-              <span>{isId ? "Reset" : "Reset All"}</span>
+              <span>{tShared("reset")}</span>
             </button>
           )}
         </div>
@@ -126,7 +123,7 @@ export const ServiceCatalogTemplate = ({
       {/* Sort Section */}
       <div className="space-y-2.5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          {isId ? "Urutkan Berdasarkan" : "Sort By"}
+          {tShared("filterSort")}
         </label>
         <div className="space-y-1.5">
           {sortOptions.map((opt) => {
@@ -166,7 +163,7 @@ export const ServiceCatalogTemplate = ({
       {/* Categories Section */}
       <div className="space-y-2.5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          {isId ? "Kategori Pilihan" : "Categories"}
+          {tShared("categoriesTitle")}
         </label>
         <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
           {categories.map((cat, i) => {
@@ -242,7 +239,7 @@ export const ServiceCatalogTemplate = ({
             href={`/${locale}`}
             prefetch={true}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition-transform active:scale-95"
-            aria-label="Kembali"
+            aria-label={tShared("back")}
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -306,7 +303,7 @@ export const ServiceCatalogTemplate = ({
                 type="button"
                 className="flex h-10 items-center gap-2 rounded-xl bg-blue-600 px-6 text-xs font-bold text-white shadow-md shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 cursor-pointer"
               >
-                <span>{isId ? "Cari" : "Search"}</span>
+                <span>{tShared("searchBtn")}</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -324,7 +321,7 @@ export const ServiceCatalogTemplate = ({
                 {catalogTitle}
               </h2>
               <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-100">
-                {isId ? "Menampilkan 0 data" : "Showing 0 items"}
+                {tShared("showingResults", { count: 0 })}
               </span>
             </div>
             <p className="mt-1 text-xs sm:text-sm text-slate-500 font-normal">
@@ -340,7 +337,7 @@ export const ServiceCatalogTemplate = ({
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
             >
               <SlidersHorizontal className="h-4 w-4 text-blue-600" />
-              <span>{isId ? "Filter & Urutkan" : "Filter & Sort"}</span>
+              <span>{tShared("filterTitle")}</span>
               {activeFilterCount > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                   {activeFilterCount}
@@ -355,7 +352,7 @@ export const ServiceCatalogTemplate = ({
                 className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
+                <span>{tShared("reset")}</span>
               </button>
             )}
           </div>
@@ -406,7 +403,7 @@ export const ServiceCatalogTemplate = ({
                   onClick={handleResetFilters}
                   className="text-xs font-semibold text-rose-600 hover:underline px-2 py-1 cursor-pointer"
                 >
-                  {isId ? "Reset Semua" : "Reset All"}
+                  {tShared("resetAll")}
                 </button>
               </div>
             )}
@@ -417,13 +414,10 @@ export const ServiceCatalogTemplate = ({
                 <ServiceIcon className="h-8 w-8" />
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                {emptyTitle || (isId ? `Belum Ada Data ${serviceName}` : `No ${serviceName} Available`)}
+                {emptyTitle}
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-slate-500 max-w-sm leading-relaxed">
-                {emptyDesc ||
-                  (isId
-                    ? `Data unit dan katalog untuk ${serviceName} sedang dipersiapkan. Silakan cek kembali dalam waktu dekat.`
-                    : `The catalog and units for ${serviceName} are currently being prepared.`)}
+                {emptyDesc}
               </p>
 
               {(searchQuery || activeCategory !== "all" || sortBy !== "latest") && (
@@ -433,7 +427,7 @@ export const ServiceCatalogTemplate = ({
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-blue-600/25 transition-all hover:bg-blue-700 active:scale-95 cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>{isId ? "Reset Filter" : "Reset Filter"}</span>
+                  <span>{tShared("resetFilter")}</span>
                 </button>
               )}
             </div>
@@ -447,7 +441,7 @@ export const ServiceCatalogTemplate = ({
           <DrawerHeader className="p-0 pb-4 border-b border-slate-100 flex items-center justify-between">
             <DrawerTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-blue-600" />
-              <span>{isId ? "Filter & Urutkan" : "Filter & Sort"}</span>
+              <span>{tShared("filterTitle")}</span>
             </DrawerTitle>
             {activeFilterCount > 0 && (
               <button
@@ -455,7 +449,7 @@ export const ServiceCatalogTemplate = ({
                 onClick={handleResetFilters}
                 className="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
               >
-                Reset
+                {tShared("reset")}
               </button>
             )}
           </DrawerHeader>
@@ -468,7 +462,7 @@ export const ServiceCatalogTemplate = ({
               onClick={() => setIsFilterDrawerOpen(false)}
               className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-md shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 cursor-pointer"
             >
-              {isId ? "Terapkan Filter" : "Apply Filter"}
+              {tShared("applyFilter")}
             </button>
           </div>
         </DrawerContent>
